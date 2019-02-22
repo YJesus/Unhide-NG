@@ -25,6 +25,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/stat.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/stat.h> 
+#include <fcntl.h>
+#include <dirent.h>
+
+#define MAX_VALUE(a) (((unsigned long long)1 << (sizeof(a) * CHAR_BIT)) - 1)
 
 typedef enum BOOL_e
 {
@@ -50,9 +55,8 @@ const char header[] =
 struct arguments
 {
 	char* random_to_path;
-	char* report_path;
-	int processes_gids;
-	int files_gids;
+	BOOL_t processes_gids;
+	BOOL_t files_gids;
 };
 
 enum CMD_OPT_e
@@ -60,7 +64,6 @@ enum CMD_OPT_e
 	OPT_EMPTY = 1,
 	OPT_COPY_RANDOM_TO_PATH,
 	OPT_COPY_RANDOM_TO_TMP,
-	OPT_REPORT_PATH,
 	OPT_ONLY_PROCESSES_GIDS,
 	OPT_ONLY_FILES_GIDS
 };
@@ -69,7 +72,6 @@ static struct argp_option options[] =
 {
 	{ "copy-with-random-name-to", OPT_COPY_RANDOM_TO_PATH, "FILE", OPTION_ARG_OPTIONAL, "Copy itself with a random name to a specific path. Example: --copy-with-random-name-to=/root" },
 	{ "copy-with-random-name-to-tmp", OPT_COPY_RANDOM_TO_TMP, 0, OPTION_ARG_OPTIONAL, "Copy itself with a random name to default tmp path" },
-	{ "report-path", OPT_REPORT_PATH, "FILE", OPTION_ARG_OPTIONAL, "Set new report path. it needs also the name. Example: --report-path=/root/analysis.txt" },
 	{ "processes-gids", OPT_ONLY_PROCESSES_GIDS, 0, OPTION_ARG_OPTIONAL, "bruteforce processes GIDs" },
 	{ "files-gids", OPT_ONLY_FILES_GIDS, 0, OPTION_ARG_OPTIONAL, "bruteforce files GIDs" },
 	{ NULL, 0, NULL, 0, NULL, 0 }
@@ -196,25 +198,12 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state)
 
 		break;
 
-	case OPT_REPORT_PATH:
-		if (TRUE_ == IsDirExist(arg))
-		{
-			fprintf(stderr, "error: report file already exist: %s\n", arg);
-			argp_usage(state);
-			return ARGP_ERR_UNKNOWN;
-		}
-		else
-		{
-			arguments->report_path = arg;
-		}
-		break;
-
 	case OPT_ONLY_PROCESSES_GIDS:
-		arguments->processes_gids = 1;
+		arguments->processes_gids = TRUE_;
 		break;
 
 	case OPT_ONLY_FILES_GIDS:
-		arguments->files_gids = 1;
+		arguments->files_gids = TRUE_;
 		break;
 
 
@@ -247,10 +236,67 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state)
 
 static struct argp argp = { options, parse_opt, args_doc, doc, NULL, NULL, NULL };
 
+typedef enum GEN_RAND_STR_e
+{
+	GRS_ALPHANUM = 0,
+	GRS_NUM,
+	GRS_ALPHA
+
+} GEN_RAND_STR_e_t;
+
+BOOL_t GenerateRandomString(char* str, GEN_RAND_STR_e_t type, int min, int max)
+{
+	char charset_alphanum[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+	char charset_num[] = "0123456789";
+	char charset_alpha[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	char* charset = NULL;
+	size_t size_charset = 0;
+	int random_nr_chars = 0;
+
+	switch (type)
+	{
+	case GRS_ALPHANUM:
+		charset = charset_alphanum;
+		size_charset = sizeof(charset_alphanum);
+		break;
+
+	case GRS_NUM:
+		charset = charset_num;
+		size_charset = sizeof(charset_num);
+		break;
+
+	case GRS_ALPHA:
+		charset = charset_alpha;
+		size_charset = sizeof(charset_alpha);
+		break;
+
+	default:
+
+		return FALSE_;
+
+		break;
+	}
+
+	srand((unsigned int)time(NULL));
+
+	random_nr_chars = rand() % max;
+	while (random_nr_chars < min)
+	{
+		random_nr_chars++;
+	}
+
+	do
+	{
+		*str = charset[rand() % (((int)size_charset) - 1)];
+		str++;
+	} while (random_nr_chars-- > 0);
+
+	return TRUE_;
+}
+
+
 BOOL_t GenerateRandomNamePath(char* path, char* random_path)
 {
-	char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-	int random_nr_chars = 0;
 	char* end_str = NULL;
 
 	if ((NULL == path) || (NULL == random_path))
@@ -267,18 +313,7 @@ BOOL_t GenerateRandomNamePath(char* path, char* random_path)
 	}
 	end_str++;
 
-	srand((unsigned int)time(NULL));
-
-	random_nr_chars = 7 + (rand() % 9);
-
-	do
-	{
-		*end_str = charset[rand() % ((int)sizeof(charset) - 1)];
-		end_str++;
-	} while (random_nr_chars-- > 0);
-
-
-	return TRUE_;
+	return GenerateRandomString(end_str, GRS_ALPHANUM, 7, 9);
 }
 
 BOOL_t CopyItselfToRandomPath(char* program, char* dst_path)
@@ -353,6 +388,349 @@ BOOL_t CopyItselfToRandomPath(char* program, char* dst_path)
 	return retf;
 }
 
+static int ExistStartNumericInDir(char* path, char* pid_string, int* exist)
+{
+	DIR* dir;
+	struct dirent* ent;
+	register char c;
+
+	*exist = 0;
+
+	if ((dir = opendir(path)) != NULL)
+	{
+		while ((ent = readdir(dir)) != NULL)
+		{
+			c = ent->d_name[0];
+
+			if (c >= '0' && c <= '9' && strcmp(ent->d_name, pid_string) == 0)
+			{
+				*exist = 1;
+				break;
+			}
+		}
+		closedir(dir);
+	}
+	else
+	{
+		return -1;
+	}
+
+	return 0;
+}
+
+void _BruteForceGIDProcessesParent(pid_t child_pid, int fd_child, int fd_parent, gid_t first_gid, gid_t last_gid)
+{
+	ssize_t write_ret = 0;
+	ssize_t read_ret = 0;
+	int exist_in_proc = 0;
+	int exist_in_proc_ret = 0;
+	unsigned int gid_detected = 0;
+	unsigned int glast_gid = 0;
+	unsigned int actual_gid = 0;
+	int read_state = 0;
+	char procfs_status_file_name[PATH_MAX];
+	char procfs_childpid_dir_name[PATH_MAX];
+	char pid_string[PATH_MAX];
+	char* type = NULL;
+	unsigned int i = 0;
+
+	memset(procfs_status_file_name, 0, sizeof(procfs_status_file_name));
+	sprintf(procfs_status_file_name, "/proc/%d/status", child_pid);
+
+	memset(procfs_childpid_dir_name, 0, sizeof(procfs_childpid_dir_name));
+	sprintf(procfs_childpid_dir_name, "/proc/%d", child_pid);
+
+	memset(pid_string, 0, sizeof(pid_string));
+	sprintf(pid_string, "%d", child_pid);
+
+	printf("starting brute... please be patient\n");
+
+	read_state = 1;
+	actual_gid = (unsigned int) first_gid;
+	do
+	{
+		if ((i++ % 100000) == 0)
+		{
+			printf("actual gid: %u ....\n", actual_gid);
+		}
+
+		glast_gid = gid_detected;
+		read_ret = read(fd_child, &gid_detected, sizeof(gid_detected));
+	
+		exist_in_proc = 0;
+		exist_in_proc_ret = ExistStartNumericInDir((char*)"/proc/", pid_string, &exist_in_proc);
+
+		write_ret = write(fd_parent, &read_state, sizeof(read_state));
+		if ((read_ret == -1) || (read_ret == 0))
+		{
+			fprintf(stderr, "error: brute GID processes broken read fd_child pipe with child!! the GID range of this thread will be stopped...\n");
+			break;
+		}
+		if ((write_ret == -1) || (write_ret == 0))
+		{
+			fprintf(stderr, "error: brute GID processes broken write fd_parent pipe with child!! the GID range of this thread will be stopped... \n");
+			break;
+		}
+
+		if (exist_in_proc_ret == -1)
+		{
+			type = (char*) "/proc dir innaccesible";
+		}
+		else if (exist_in_proc == 0)
+		{
+			type = (char*) "gid hidden from readdir proc";
+		}
+		else if (gid_detected != actual_gid)
+		{
+			type = (char*) "gid_detected != actual_gid";
+		}
+		else if (gid_detected == glast_gid)
+		{
+			type = (char*) "gid_detected == last_gid";
+		}
+		else if (gid_detected == 0)
+		{
+			type = (char*) "gid_detected == 0";
+		}
+
+		if (NULL != type)
+		{
+			printf("WARNING!!: possible rookit detected: gid_detected %u, actual_gid: %u, glast_gid: %u, type: %s\n", gid_detected, actual_gid, glast_gid, type);
+			break;
+		}
+	} while (actual_gid++ != (unsigned int) last_gid);
+}
+
+void _BruteForceGIDProcessesChild(int fd_child, int fd_parent, gid_t first_gid, gid_t last_gid)
+{
+	ssize_t write_ret = 0;
+	ssize_t read_ret = 0;
+	int set_gid_ret = 0;
+	unsigned int gid_detected = 0;
+	unsigned int glast_gid = 0;
+	unsigned int actual_gid = 0;
+	int read_state = 0;
+	unsigned int gid_aux = 0;
+
+	actual_gid = (unsigned int) first_gid;
+	do
+	{
+		gid_detected = 0;
+		set_gid_ret = setgid(actual_gid);
+		glast_gid = gid_detected;
+		gid_detected = getgid();
+
+		write_ret = write(fd_child, &gid_detected, sizeof(gid_detected));
+		read_ret = read(fd_parent, &read_state, sizeof(read_state));
+
+		if ((write_ret == 0) || (write_ret == -1))
+		{
+			break;
+		}
+		if ((read_ret == 0) || (read_ret == -1))
+		{
+			break;
+		}
+
+		if ((actual_gid != gid_detected) ||
+			(glast_gid == gid_detected) ||
+			(set_gid_ret != 0))
+		{
+			/* possible rootkit detected */
+
+			gid_aux = 0;
+			write(fd_child, &gid_aux, sizeof(gid_aux));
+
+			break;
+		}
+	} while (actual_gid++ != (unsigned int) last_gid);
+}
+
+
+void BruteForceGIDProcessesParent(pid_t child_pid, char* fifo_child, char* fifo_parent, gid_t first_gid, gid_t last_gid)
+{
+	int fd_child = 0;
+	int fd_parent = 0;
+
+	fd_child = open(fifo_child, O_RDONLY);
+	if (fd_child != -1)
+	{
+		fd_parent = open(fifo_parent, O_WRONLY);
+		if (fd_parent != -1)
+		{
+			_BruteForceGIDProcessesParent(child_pid, fd_child, fd_parent, first_gid, last_gid);
+
+			close(fd_parent);
+		}
+		close(fd_child);
+	}
+}
+
+void BruteForceGIDProcessesChild(char* fifo_child, char* fifo_parent, gid_t first_gid, gid_t last_gid)
+{
+	int fd_child = 0;
+	int fd_parent = 0;
+
+	fd_child = open(fifo_child, O_WRONLY);
+	if (fd_child != -1)
+	{
+		fd_parent = open(fifo_parent, O_RDONLY);
+		if (fd_parent != -1)
+		{
+			_BruteForceGIDProcessesChild(fd_child, fd_parent, first_gid, last_gid);
+
+			close(fd_parent);
+		}
+		close(fd_child);
+	}
+}
+
+void* BruteForceGIDProcesses(gid_t first_gid, gid_t last_gid)
+{
+	char fifo_name[PATH_MAX];
+	char fifo_parent[PATH_MAX];
+	char fifo_child[PATH_MAX];
+	char tmp_dir[PATH_MAX];
+	pid_t child_pid;
+
+	memset(fifo_name, 0, sizeof(fifo_name));
+	memset(fifo_parent, 0, sizeof(fifo_parent));
+	memset(fifo_child, 0, sizeof(fifo_child));
+	memset(tmp_dir, 0, sizeof(tmp_dir));
+
+	GenerateRandomString(fifo_name, GRS_ALPHANUM, 7, 9);
+
+	GetTempPath(tmp_dir, sizeof(tmp_dir));
+
+	sprintf(fifo_parent, "%s/%s.parent_processes", tmp_dir, fifo_name);
+	sprintf(fifo_child, "%s/%s.child_processes", tmp_dir, fifo_name);
+
+	printf("brute GID processes\n\tGID range: %u - %u\n\t%s \n\t%s\n", first_gid, last_gid, fifo_parent, fifo_child);
+
+	if (mkfifo(fifo_parent, 0666) == 0)
+	{
+		if (mkfifo(fifo_child, 0666) == 0)
+		{
+			child_pid = fork();
+			if (child_pid != -1)
+			{
+				if (child_pid == 0)
+				{
+					BruteForceGIDProcessesChild(fifo_child, fifo_parent, first_gid, last_gid); 
+				}
+				else
+				{
+					BruteForceGIDProcessesParent(child_pid, fifo_child, fifo_parent, first_gid, last_gid);
+				}
+			}
+			unlink(fifo_child);
+		}
+		unlink(fifo_parent);
+	}
+
+	return NULL;
+}
+
+void* BruteForceGIDFiles(gid_t first_gid, gid_t last_gid)
+{
+	char file_name[PATH_MAX];
+	char full_path[PATH_MAX];
+	unsigned int gid_detected = 0;
+	unsigned int actual_gid = 0;
+	unsigned int glast_gid = 0;
+	uid_t my_uid;
+	struct stat statbuf;
+	int chown_ret = 0;
+	int stat_ret = 0;
+	int exist_file_ret;
+	int exist_in_tmp;
+	char file_name_ext[PATH_MAX];
+	char tmp_dir[PATH_MAX];
+	unsigned int i = 0;
+	char* type = NULL;
+
+	my_uid = getuid();
+
+	memset(file_name, 0, sizeof(file_name));
+	memset(full_path, 0, sizeof(full_path));
+	memset(file_name_ext, 0, sizeof(file_name_ext));
+	memset(tmp_dir, 0, sizeof(tmp_dir));
+
+	GenerateRandomString(file_name, GRS_NUM, 7, 9);
+
+	GetTempPath(tmp_dir, sizeof(tmp_dir));
+
+	sprintf(file_name_ext, "%s.files", file_name);
+
+	sprintf(full_path, "%s/%s", tmp_dir, file_name_ext);
+
+	printf("brute GID files\n\tGID range: %u - %u\n\t%s\n", first_gid, last_gid, full_path);
+
+	fclose(fopen(full_path, "wb+"));
+
+	actual_gid = first_gid;
+	do
+	{
+		if ((i++ % 100000) == 0)
+		{
+			printf("actual gid: %u ....\n", actual_gid);
+		}
+
+		chown_ret = chown(full_path, my_uid, actual_gid);
+		gid_detected = 0;
+		statbuf.st_gid = 0;
+		stat_ret = stat(full_path, &statbuf);
+		if (stat_ret != -1)
+		{
+			glast_gid = gid_detected;
+			gid_detected = statbuf.st_gid;
+		}
+		exist_in_tmp = 0;
+		exist_file_ret = ExistStartNumericInDir(tmp_dir, file_name_ext, &exist_in_tmp);
+
+		if (exist_file_ret == -1)
+		{
+			type = (char*) "tmp dir innaccesible";
+		}
+		else if (exist_in_tmp == 0)
+		{
+			type = (char*) "gid hidden from readdir tmp";
+		}
+		else if (chown_ret == -1)
+		{
+			type = (char*) "chown hooked";
+		}
+		else if (stat_ret == -1)
+		{
+			type = (char*) "stat hooked";
+		}
+		else if (gid_detected != actual_gid)
+		{
+			type = (char*) "gid_detected != actual_gid";
+		}
+		else if (gid_detected == last_gid)
+		{
+			type = (char*) "gid_detected == last_gid";
+		}
+		else if (gid_detected == 0)
+		{
+			type = (char*) "gid_detected == 0";
+		}
+
+		if (NULL != type)
+		{
+			printf("WARNING!!: possible rookit detected: type: %s - extra info : chown_ret: %d, stat_ret : %d, exist_file_ret : %d, exist_in_tmp : %d, gid_detected : %u, actual_gid : %u, last_gid : %u\n",
+				type, chown_ret, stat_ret, exist_file_ret, exist_in_tmp, gid_detected, actual_gid, glast_gid);
+			break;
+		}
+
+	} while (actual_gid++ != last_gid);
+
+	unlink(full_path);
+
+	return NULL;
+}
+
 int main(int argc, char *argv[])
 {
 	struct arguments arguments;
@@ -373,13 +751,23 @@ int main(int argc, char *argv[])
 
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
-	printf("TMP path: %s\n", arguments.random_to_path);
-
 	if (NULL != arguments.random_to_path)
 	{
 		retf = CopyItselfToRandomPath(argv[0], arguments.random_to_path) == TRUE_ ? 0 : 1;
 
 		free(arguments.random_to_path);
+	}
+	else if (arguments.files_gids)
+	{
+		BruteForceGIDFiles(1, MAX_VALUE(gid_t) - 1);
+	}
+	else if (arguments.processes_gids)
+	{
+		BruteForceGIDProcesses(1, MAX_VALUE(gid_t) - 1);
+	}
+	else
+	{
+		fprintf(stderr, "error: wtf\n");
 	}
 
 	puts("bye");
