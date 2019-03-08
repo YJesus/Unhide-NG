@@ -52,28 +52,39 @@ const char header[] =
 "http://www.unhide-forensics.info\n\n"
 "we recommend you execute first --copy-with-random-name-to=path or --copy-with-random-name-to-tmp to avoid unhide detection\n\n";
 
-struct arguments
+typedef struct arguments
 {
 	char* random_to_path;
 	BOOL_t processes_gids;
 	BOOL_t files_gids;
-};
+	BOOL_t processes_gids_readdir;
+	BOOL_t processes_gids_stat;
+	BOOL_t processes_gids_jail;
+	BOOL_t files_gids_readdir;
+	BOOL_t files_gids_stat;
+} ARGUMENTS_t;
 
 enum CMD_OPT_e
 {
 	OPT_EMPTY = 1,
 	OPT_COPY_RANDOM_TO_PATH,
 	OPT_COPY_RANDOM_TO_TMP,
-	OPT_ONLY_PROCESSES_GIDS,
-	OPT_ONLY_FILES_GIDS
+	OPT_PROCESSES_GIDS_READDIR,
+	OPT_PROCESSES_GIDS_STAT,
+	OPT_PROCESSES_GIDS_JAIL,
+	OPT_FILES_GIDS_READDIR,
+	OPT_FILES_GIDS_STAT
 };
 
 static struct argp_option options[] =
 {
 	{ "copy-with-random-name-to", OPT_COPY_RANDOM_TO_PATH, "FILE", OPTION_ARG_OPTIONAL, "Copy itself with a random name to a specific path. Example: --copy-with-random-name-to=/root" },
 	{ "copy-with-random-name-to-tmp", OPT_COPY_RANDOM_TO_TMP, 0, OPTION_ARG_OPTIONAL, "Copy itself with a random name to default tmp path" },
-	{ "processes-gids", OPT_ONLY_PROCESSES_GIDS, 0, OPTION_ARG_OPTIONAL, "bruteforce processes GIDs" },
-	{ "files-gids", OPT_ONLY_FILES_GIDS, 0, OPTION_ARG_OPTIONAL, "bruteforce files GIDs" },
+	{ "processes-gids-readdir", OPT_PROCESSES_GIDS_READDIR, 0, OPTION_ARG_OPTIONAL, "bruteforce processes GIDs via readdir, very slow" },
+	{ "processes-gids-stat", OPT_PROCESSES_GIDS_STAT, 0, OPTION_ARG_OPTIONAL, "bruteforce processes GIDs via stat" },
+	{ "processes-gids-jail", OPT_PROCESSES_GIDS_JAIL, 0, OPTION_ARG_OPTIONAL, "bruteforce processes GIDs and detected setgid jail" },
+	{ "files-gids-readdir", OPT_FILES_GIDS_READDIR, 0, OPTION_ARG_OPTIONAL, "bruteforce files GIDs via readdir, very slow" },
+	{ "files-gids-stat", OPT_FILES_GIDS_STAT, 0, OPTION_ARG_OPTIONAL, "bruteforce files GIDs via stat" },
 	{ NULL, 0, NULL, 0, NULL, 0 }
 };
 
@@ -144,6 +155,82 @@ BOOL_t GetTempPath(char* tmp_path, size_t size_tmp_path)
 }
 
 
+int CheckRights(void)
+{
+	char test_file[PATH_MAX];
+	FILE* file = NULL;
+	int retf = -1;
+	struct stat statbuf;
+	gid_t actual_gid = 8;
+	char tmp_path[PATH_MAX];
+
+	memset(tmp_path, 0, sizeof(tmp_path));
+
+	GetTempPath(tmp_path, sizeof(tmp_path));
+
+	memset(test_file, 0, sizeof(test_file));
+	memset(&statbuf, 0, sizeof(statbuf));
+
+	sprintf(test_file, "%s/_test", tmp_path);
+
+	retf = -1;
+	file = fopen(test_file, "wb+");
+	if (file == NULL)
+	{
+		perror(test_file);
+	}
+	else
+	{
+		if (chown(test_file, 0, 0) == 0)
+		{
+			statbuf.st_gid = 8;
+			if (stat(test_file, &statbuf) == 0)
+			{
+				if (statbuf.st_gid == 0)
+				{
+					if (chown(test_file, 1, 1) == 0)
+					{
+						statbuf.st_gid = 8;
+						if (stat(test_file, &statbuf) == 0)
+						{
+							if (statbuf.st_gid == 1)
+							{
+								actual_gid = getgid();
+								if (setgid(0) == 0)
+								{
+									if (getgid() == 0)
+									{
+										if (setgid(1) == 0)
+										{
+											if (getgid() == 1)
+											{
+												printf("user rights ok!!\n");
+												retf = 0;
+											}
+										}
+									}
+								}
+								setgid(actual_gid);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		fclose(file);
+		unlink(test_file);
+	}
+
+	if (retf != 0)
+	{
+		fprintf(stderr, "error: user rights fail!!\n");
+	}
+
+	return retf;
+}
+
+
 static error_t parse_opt(int key, char* arg, struct argp_state* state)
 {
 	struct arguments* arguments = (struct arguments*) state->input;
@@ -198,12 +285,35 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state)
 
 		break;
 
-	case OPT_ONLY_PROCESSES_GIDS:
+	case OPT_PROCESSES_GIDS_READDIR:
+	case OPT_PROCESSES_GIDS_STAT:
+	case OPT_PROCESSES_GIDS_JAIL:
 		arguments->processes_gids = TRUE_;
+		if (OPT_PROCESSES_GIDS_READDIR == key)
+		{
+			arguments->processes_gids_readdir = TRUE_;
+		}
+		else if (OPT_PROCESSES_GIDS_STAT == key)
+		{
+			arguments->processes_gids_stat = TRUE_;
+		}
+		else if (OPT_PROCESSES_GIDS_JAIL == key)
+		{
+			arguments->processes_gids_jail = TRUE_;
+		}
 		break;
 
-	case OPT_ONLY_FILES_GIDS:
+	case OPT_FILES_GIDS_READDIR:
+	case OPT_FILES_GIDS_STAT:
 		arguments->files_gids = TRUE_;
+		if (OPT_FILES_GIDS_READDIR == key)
+		{
+			arguments->files_gids_readdir = TRUE_;
+		}
+		else if (OPT_FILES_GIDS_STAT == key)
+		{
+			arguments->files_gids_stat = TRUE_;
+		}
 		break;
 
 
@@ -212,14 +322,14 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state)
 		{
 			if ((!arguments->processes_gids) && (!arguments->files_gids))
 			{
-				fprintf(stderr, "error: you need specify --processes-gids or --files-gids\n");
+				fprintf(stderr, "error: you need specify a correct param, use --help\n");
 
 				argp_usage(state);
 				return ARGP_ERR_UNKNOWN;
 			}
 			else if ((arguments->processes_gids) && (arguments->files_gids))
 			{
-				fprintf(stderr, "error: you can only specify --processes-gids or --files-gids at the same time\n");
+				fprintf(stderr, "error: you can only specify one type at the same time, user --help\n");
 
 				argp_usage(state);
 				return ARGP_ERR_UNKNOWN;
@@ -418,7 +528,7 @@ static int ExistStartNumericInDir(char* path, char* pid_string, int* exist)
 	return 0;
 }
 
-void _BruteForceGIDProcessesParent(pid_t child_pid, int fd_child, int fd_parent, gid_t first_gid, gid_t last_gid)
+void _BruteForceGIDProcessesParent(pid_t child_pid, int fd_child, int fd_parent, gid_t first_gid, gid_t last_gid, ARGUMENTS_t* args)
 {
 	ssize_t write_ret = 0;
 	ssize_t read_ret = 0;
@@ -428,14 +538,14 @@ void _BruteForceGIDProcessesParent(pid_t child_pid, int fd_child, int fd_parent,
 	unsigned int glast_gid = 0;
 	unsigned int actual_gid = 0;
 	int read_state = 0;
-	char procfs_status_file_name[PATH_MAX];
 	char procfs_childpid_dir_name[PATH_MAX];
 	char pid_string[PATH_MAX];
 	char* type = NULL;
 	unsigned int i = 0;
+	int stat_ret = 0;
+	struct stat statbuf;
 
-	memset(procfs_status_file_name, 0, sizeof(procfs_status_file_name));
-	sprintf(procfs_status_file_name, "/proc/%d/status", child_pid);
+	memset(&statbuf, 0, sizeof(statbuf));
 
 	memset(procfs_childpid_dir_name, 0, sizeof(procfs_childpid_dir_name));
 	sprintf(procfs_childpid_dir_name, "/proc/%d", child_pid);
@@ -444,6 +554,15 @@ void _BruteForceGIDProcessesParent(pid_t child_pid, int fd_child, int fd_parent,
 	sprintf(pid_string, "%d", child_pid);
 
 	printf("starting brute... please be patient\n");
+
+	if (args->processes_gids_jail)
+	{
+		puts("detecting setgid jail...");
+	}
+
+	exist_in_proc = 1;
+	exist_in_proc_ret = 0;
+	stat_ret = 0;
 
 	read_state = 1;
 	actual_gid = (unsigned int) first_gid;
@@ -457,9 +576,22 @@ void _BruteForceGIDProcessesParent(pid_t child_pid, int fd_child, int fd_parent,
 		glast_gid = gid_detected;
 		read_ret = read(fd_child, &gid_detected, sizeof(gid_detected));
 	
-		exist_in_proc = 0;
-		exist_in_proc_ret = ExistStartNumericInDir((char*)"/proc/", pid_string, &exist_in_proc);
+		if (args->processes_gids_readdir)
+		{
+			exist_in_proc = 0;
+			exist_in_proc_ret = ExistStartNumericInDir((char*)"/proc/", pid_string, &exist_in_proc);
+		}
 
+		if (args->processes_gids_stat)
+		{
+			statbuf.st_gid = 0;
+			stat_ret = stat(procfs_childpid_dir_name, &statbuf);
+		}
+		else
+		{
+			statbuf.st_gid = gid_detected;
+		}
+		
 		write_ret = write(fd_parent, &read_state, sizeof(read_state));
 		if ((read_ret == -1) || (read_ret == 0))
 		{
@@ -471,7 +603,10 @@ void _BruteForceGIDProcessesParent(pid_t child_pid, int fd_child, int fd_parent,
 			fprintf(stderr, "error: brute GID processes broken write fd_parent pipe with child!! the GID range of this thread will be stopped... \n");
 			break;
 		}
-
+		if (stat_ret == -1)
+		{
+			type = (char*) "stat /proc innaccesible";
+		}
 		if (exist_in_proc_ret == -1)
 		{
 			type = (char*) "/proc dir innaccesible";
@@ -492,10 +627,13 @@ void _BruteForceGIDProcessesParent(pid_t child_pid, int fd_child, int fd_parent,
 		{
 			type = (char*) "gid_detected == 0";
 		}
-
+		else if (statbuf.st_gid != gid_detected)
+		{
+			type = (char*) "statbuf.st_gid != gid_detected";
+		}
 		if (NULL != type)
 		{
-			printf("WARNING!!: possible rookit detected: gid_detected %u, actual_gid: %u, glast_gid: %u, type: %s\n", gid_detected, actual_gid, glast_gid, type);
+			printf("WARNING!!: possible rookit detected: gid_detected %u, actual_gid: %u, glast_gid: %u, statbuf.st_gid %u, type: %s\n", gid_detected, actual_gid, glast_gid, statbuf.st_gid, type);
 			break;
 		}
 	} while (actual_gid++ != (unsigned int) last_gid);
@@ -547,7 +685,7 @@ void _BruteForceGIDProcessesChild(int fd_child, int fd_parent, gid_t first_gid, 
 }
 
 
-void BruteForceGIDProcessesParent(pid_t child_pid, char* fifo_child, char* fifo_parent, gid_t first_gid, gid_t last_gid)
+void BruteForceGIDProcessesParent(pid_t child_pid, char* fifo_child, char* fifo_parent, gid_t first_gid, gid_t last_gid, ARGUMENTS_t* args)
 {
 	int fd_child = 0;
 	int fd_parent = 0;
@@ -558,7 +696,7 @@ void BruteForceGIDProcessesParent(pid_t child_pid, char* fifo_child, char* fifo_
 		fd_parent = open(fifo_parent, O_WRONLY);
 		if (fd_parent != -1)
 		{
-			_BruteForceGIDProcessesParent(child_pid, fd_child, fd_parent, first_gid, last_gid);
+			_BruteForceGIDProcessesParent(child_pid, fd_child, fd_parent, first_gid, last_gid, args);
 
 			close(fd_parent);
 		}
@@ -585,7 +723,7 @@ void BruteForceGIDProcessesChild(char* fifo_child, char* fifo_parent, gid_t firs
 	}
 }
 
-void* BruteForceGIDProcesses(gid_t first_gid, gid_t last_gid)
+void* BruteForceGIDProcesses(gid_t first_gid, gid_t last_gid, ARGUMENTS_t* args)
 {
 	char fifo_name[PATH_MAX];
 	char fifo_parent[PATH_MAX];
@@ -620,7 +758,7 @@ void* BruteForceGIDProcesses(gid_t first_gid, gid_t last_gid)
 				}
 				else
 				{
-					BruteForceGIDProcessesParent(child_pid, fifo_child, fifo_parent, first_gid, last_gid);
+					BruteForceGIDProcessesParent(child_pid, fifo_child, fifo_parent, first_gid, last_gid, args);
 				}
 			}
 			unlink(fifo_child);
@@ -631,10 +769,11 @@ void* BruteForceGIDProcesses(gid_t first_gid, gid_t last_gid)
 	return NULL;
 }
 
-void* BruteForceGIDFiles(gid_t first_gid, gid_t last_gid)
+void* BruteForceGIDFiles(gid_t first_gid, gid_t last_gid, ARGUMENTS_t* args)
 {
 	char file_name[PATH_MAX];
 	char full_path[PATH_MAX];
+	char new_path[PATH_MAX];
 	unsigned int gid_detected = 0;
 	unsigned int actual_gid = 0;
 	unsigned int glast_gid = 0;
@@ -648,6 +787,7 @@ void* BruteForceGIDFiles(gid_t first_gid, gid_t last_gid)
 	char tmp_dir[PATH_MAX];
 	unsigned int i = 0;
 	char* type = NULL;
+	FILE* file_fd = NULL;
 
 	my_uid = getuid();
 
@@ -655,6 +795,7 @@ void* BruteForceGIDFiles(gid_t first_gid, gid_t last_gid)
 	memset(full_path, 0, sizeof(full_path));
 	memset(file_name_ext, 0, sizeof(file_name_ext));
 	memset(tmp_dir, 0, sizeof(tmp_dir));
+	memset(new_path, 0, sizeof(new_path));
 
 	GenerateRandomString(file_name, GRS_NUM, 7, 9);
 
@@ -662,11 +803,28 @@ void* BruteForceGIDFiles(gid_t first_gid, gid_t last_gid)
 
 	sprintf(file_name_ext, "%s.files", file_name);
 
-	sprintf(full_path, "%s/%s", tmp_dir, file_name_ext);
+
+	sprintf(new_path, "%s/%s", tmp_dir, file_name);
+
+	printf("creating dir: %s\n", new_path);
+
+	mkdir(new_path, 0775);
+
+	sprintf(full_path, "%s/%s", new_path, file_name_ext);
 
 	printf("brute GID files\n\tGID range: %u - %u\n\t%s\n", first_gid, last_gid, full_path);
 
-	fclose(fopen(full_path, "wb+"));
+	file_fd = fopen(full_path, "wb+");
+	if (NULL == file_fd)
+	{
+		perror("");
+		return NULL;
+	}
+	fclose(file_fd);
+
+	exist_file_ret = 0;
+	exist_in_tmp = 1;
+	stat_ret = 0;
 
 	actual_gid = first_gid;
 	do
@@ -677,16 +835,28 @@ void* BruteForceGIDFiles(gid_t first_gid, gid_t last_gid)
 		}
 
 		chown_ret = chown(full_path, my_uid, actual_gid);
+
 		gid_detected = 0;
-		statbuf.st_gid = 0;
-		stat_ret = stat(full_path, &statbuf);
-		if (stat_ret != -1)
+		if (args->files_gids_stat)
 		{
-			glast_gid = gid_detected;
-			gid_detected = statbuf.st_gid;
+			statbuf.st_gid = 0;
+			stat_ret = stat(full_path, &statbuf);
+			if (stat_ret != -1)
+			{
+				glast_gid = gid_detected;
+				gid_detected = statbuf.st_gid;
+			}
 		}
-		exist_in_tmp = 0;
-		exist_file_ret = ExistStartNumericInDir(tmp_dir, file_name_ext, &exist_in_tmp);
+		else
+		{
+			gid_detected = actual_gid;
+		}
+
+		if (args->files_gids_readdir)
+		{
+			exist_in_tmp = 0;
+			exist_file_ret = ExistStartNumericInDir(new_path, file_name_ext, &exist_in_tmp);
+		}
 
 		if (exist_file_ret == -1)
 		{
@@ -751,6 +921,11 @@ int main(int argc, char *argv[])
 
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
+	if (CheckRights() == -1)
+	{
+		return 0;
+	}
+
 	if (NULL != arguments.random_to_path)
 	{
 		retf = CopyItselfToRandomPath(argv[0], arguments.random_to_path) == TRUE_ ? 0 : 1;
@@ -759,11 +934,11 @@ int main(int argc, char *argv[])
 	}
 	else if (arguments.files_gids)
 	{
-		BruteForceGIDFiles(1, MAX_VALUE(gid_t) - 1);
+		BruteForceGIDFiles(1, MAX_VALUE(gid_t) - 1, &arguments);
 	}
 	else if (arguments.processes_gids)
 	{
-		BruteForceGIDProcesses(1, MAX_VALUE(gid_t) - 1);
+		BruteForceGIDProcesses(1, MAX_VALUE(gid_t) - 1, &arguments);
 	}
 	else
 	{
