@@ -74,7 +74,21 @@ int mainw(NAME_TIMES_t** name_times, size_t* last_elemt)
 
 	memset(buf, 0, sizeof(buf));
 
-	__asm__("mov %0, %%rsi\n\t"
+	/*
+	TO DO: iterate more times buf...
+
+	for ( ; ; ) {
+	   nread = getdents....
+	   if (nread == -1)
+		   break;
+
+	   if (nread == 0)
+		   break;
+
+	*/
+
+#ifdef __x86_64
+	__asm__("mov %0, %%rax\n\t"
 		: 
 		: "r"(buf)
 		:
@@ -82,6 +96,12 @@ int mainw(NAME_TIMES_t** name_times, size_t* last_elemt)
 
 	__asm__(
 		"push %rsi\n\t"
+		"push %rdi\n\t"
+		"push %rdx\n\t"
+	);
+
+	__asm__(
+		"push %rax\n\t"
 		"xor %rax, %rax\n\t"
 		"push %rax\n\t"
 		"push $0x2e\n\t"
@@ -107,14 +127,59 @@ int mainw(NAME_TIMES_t** name_times, size_t* last_elemt)
 
 	__asm__("movl %%eax, %0" : "=r"(nread));
 
+	__asm__(
+		"pop %rdx\n\t"
+		"pop %rdi\n\t"
+		"pop %rsi\n\t"
+	);
+#else
+
+	__asm__("mov %0, %%eax\n\t"
+		:
+		: "r"(buf)
+		:
+		);
+
+	__asm__("pushal;");
+
+	__asm__(
+		"push %eax\n\t"
+		"xor %eax, %eax\n\t"
+		"push %eax\n\t"
+		"push $0x2e\n\t"
+		"mov $0x05, %al\n\t"
+		"mov %esp, %ebx\n\t"
+		"xor %ecx, %ecx\n\t"
+		"xor %edx, %edx\n\t"
+		"int $0x80\n\t" /* sys_open(".") */
+
+		"mov %eax, %ebx\n\t"
+		"xor %eax, %eax\n\t"
+		"mov $0x500000, %edx\n\t"
+
+		"pop %ecx\n\t"
+		"pop %ecx\n\t"
+		"pop %ecx\n\t"
+
+		"mov $0x8d, %al\n\t"
+		"int $0x80\n\t" /* getdents() */
+
+	);
+
+	__asm__("movl %%eax, %0" : "=r"(nread));
+
+	__asm__("popal;");
+
+#endif 
+
 	for (bpos = 0; bpos < nread;) 
 	{
 		d = (struct linux_dirent *) (buf + bpos);
-		if (0 != d->d_ino)
+		if ((0 != d->d_ino)  &&  (NULL != d->d_name))
 		{
-			//printf("%s\n", (char *)d->d_name);
-
 			c = d->d_name[0];
+
+			//printf("%s\n", (char *)d->d_name); fflush(stdout);
 
 			if (c >= '0' && c <= '9')
 			{
@@ -180,13 +245,14 @@ int main(void)
 
 	for (i = 0; i < last_elemt; i++)
 	{
-		if (name_times[i].times > 5)
+		if (name_times[i].times != 1)
 		{
-			printf("WARNING!!! possible PID hidden in /proc/%d\n", name_times[i].pid);
+			printf("WARNING!!! possible PID hidden in /proc/%d (times: %d)\n", name_times[i].pid, name_times[i].times);
 
 		}
 	}
 
+	puts("bye");
 
 	free(name_times);
 
