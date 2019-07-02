@@ -1,5 +1,5 @@
 /*
-          http://sourceforge.net/projects/unhide/
+          http://www.unhide-forensics.info/
 */
 
 /*
@@ -42,18 +42,176 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <ctype.h>
 #include <time.h>
 #include <getopt.h>
+#include <argp.h>
 
 #include "unhide-output.h"
 #include "unhide-linux.h"
 
+typedef enum BOOL_e
+{
+	FALSE_ = 0,
+	TRUE_ = 1
+} BOOL_t;
+
+
+enum CMD_OPT_e
+{
+	OPT_EMPTY = 1,
+	OPT_MORECHECK,
+	OPT_ALTSYSINFO,
+	OPT_BRUTE,
+	OPT_BRUTEDOUBLECHECK,
+	OPT_PROC,
+	OPT_PROCALL,
+	OPT_PROCFS,
+	OPT_QUICK,
+	OPT_REVERSE,
+	OPT_SYS
+};
+
+typedef struct arguments
+{
+	void* empty;
+} ARGUMENTS_t;
+
+struct arguments arguments;
+
+const char* argp_program_version = "Unhide 20190702";
+const char* argp_program_bug_address = "http://www.unhide-forensics.info";
+
+static char doc[] =
+"unhide options:\
+\v-";
+
+static char args_doc[] = " ";
 
 // header
 const char header[] =
-   "Unhide 20121229\n"
-   "Copyright © 2012 Yago Jesus & Patrick Gouin\n"
+   "Copyright © 2012-2019 Yago Jesus, Patrick Gouin & David Reguera aka Dreg\n"
    "License GPLv3+ : GNU GPL version 3 or later\n"
    "http://www.unhide-forensics.info\n\n"
    "NOTE : This version of unhide is for systems using Linux >= 2.6 \n\n";
+
+static struct argp_option options[] =
+{
+	{ "verbose", 'v', 0, OPTION_ARG_OPTIONAL, "verbose", 0 },
+	{ "morecheck", OPT_MORECHECK, 0, OPTION_ARG_OPTIONAL, "more checks (available only with procfs, checkopendir & checkchdir commands", 0 },
+	{ "altsysinfo", OPT_ALTSYSINFO, 0, OPTION_ARG_OPTIONAL, "use alternate sysinfo test in meta-test", 0 },
+	{ "logfile", 'l', 0, OPTION_ARG_OPTIONAL, "log result into unhide-linux.log file", 0 },
+	{ "brute", OPT_BRUTE, 0, OPTION_ARG_OPTIONAL, "bruteforce the all process IDs", 1 },
+	{ "brutedoublecheck", OPT_BRUTEDOUBLECHECK, 0, OPTION_ARG_OPTIONAL, "bruteforce the all process IDs with double check", 1 },
+	{ "proc", OPT_PROC, 0, OPTION_ARG_OPTIONAL, "compare /proc with the output of /bin/ps.", 1 },
+	{ "procall", OPT_PROCALL, 0, OPTION_ARG_OPTIONAL, "combinates --proc and --procfs", 1 },
+	{ "procfs", OPT_PROCFS, 0, OPTION_ARG_OPTIONAL, "compare information gathered from /bin/ps with information gathered by walking in the procfs. With --morecheck option, this test makes more checks", 1 },
+	{ "quick", OPT_QUICK, 0, OPTION_ARG_OPTIONAL, "combines the --proc, --procfs and --sys in a quick way. It's about 20 times faster but may give more false positives", 1 },
+	{ "reverse", OPT_REVERSE, 0, OPTION_ARG_OPTIONAL, "Verify that all threads seen by ps are also seen in procfs and by system calls", 1 },
+	{ "sys", OPT_SYS, 0, OPTION_ARG_OPTIONAL, "compare information gathered from /bin/ps with information gathered from system calls", 1 },
+	{ NULL, 0, NULL, 0, NULL, 0 }
+};
+
+static error_t parse_opt(int key, char* arg, struct argp_state* state)
+{
+	struct arguments* arguments = (struct arguments*) state->input;
+	static BOOL_t must = FALSE_;
+
+	switch (key)
+	{
+	case 'v':
+		verbose++;
+
+	case OPT_MORECHECK: 
+		morecheck = TRUE;
+		break;
+
+	case OPT_ALTSYSINFO:
+		RTsys = TRUE;
+		break;
+
+	case 'l': 
+		logtofile = 1;
+		break;
+
+	case OPT_BRUTEDOUBLECHECK:
+		must = TRUE_;
+
+		brutesimplecheck = FALSE;
+		tab_test[TST_BRUTE].todo = TRUE;
+		break;
+
+	case OPT_BRUTE:
+		must = TRUE_;
+
+		brutesimplecheck = TRUE;
+		tab_test[TST_BRUTE].todo = TRUE;
+		break;
+
+	case OPT_PROC:
+		must = TRUE_;
+
+		tab_test[TST_PROC].todo = TRUE;
+		break;
+
+	case OPT_PROCALL:
+		must = TRUE_;
+
+		tab_test[TST_PROC].todo = TRUE;
+		tab_test[TST_CHDIR].todo = TRUE;
+		tab_test[TST_OPENDIR].todo = TRUE;
+		tab_test[TST_READDIR].todo = TRUE;
+		break;
+
+	case OPT_PROCFS:
+		must = TRUE_;
+
+		tab_test[TST_CHDIR].todo = TRUE;
+		tab_test[TST_OPENDIR].todo = TRUE;
+		tab_test[TST_READDIR].todo = TRUE;
+		break;
+
+	case OPT_QUICK:
+		must = TRUE_;
+
+		tab_test[TST_QUICKONLY].todo = TRUE;
+		break;
+
+	case OPT_REVERSE:
+		must = TRUE_;
+
+		tab_test[TST_REVERSE].todo = TRUE;
+		break;
+
+	case OPT_SYS:
+		must = TRUE_;
+
+		tab_test[TST_KILL].todo = TRUE;
+		tab_test[TST_NOPROCPS].todo = TRUE;
+		tab_test[TST_GETPRIO].todo = TRUE;
+		tab_test[TST_GETPGID].todo = TRUE;
+		tab_test[TST_GETSID].todo = TRUE;
+		tab_test[TST_GETAFF].todo = TRUE;
+		tab_test[TST_GETPARM].todo = TRUE;
+		tab_test[TST_GETSCHED].todo = TRUE;
+		tab_test[TST_RR_INT].todo = TRUE;
+		break;
+
+	case ARGP_KEY_END:
+		if (!must)
+		{
+			argp_usage(state);
+			return ARGP_ERR_UNKNOWN;
+		}
+		break;
+
+	default:
+		return ARGP_ERR_UNKNOWN;
+		break;
+	}
+
+	return 0;
+}
+
+static struct argp argp = { options, parse_opt, args_doc, doc, NULL, NULL, NULL };
+
 
 // defauly sysctl kernel.pid_max
 int maxpid = 32768;
@@ -427,313 +585,26 @@ void printbadpid (int tmppid)
    printf("\n");
 }
 
-
-/*
- *  Display short help 
- */
-void usage(char * command) 
-{
-
-   printf("Usage: %s [options] test_list\n\n", command);
-   printf("Option :\n");
-   printf("   -V          Show version and exit\n");
-   printf("   -v          verbose\n");
-   printf("   -h          display this help\n");
-   printf("   -m          more checks (available only with procfs, checkopendir & checkchdir commands)\n");
-   printf("   -r          use alternate sysinfo test in meta-test\n");
-   printf("   -f          log result into unhide-linux.log file\n");
-   printf("   -o          same as '-f'\n");
-   printf("   -d          do a double check in brute test\n");
-   printf("Test_list :\n");
-   printf("   Test_list is one or more of the following\n");
-   printf("   Standard tests :\n");
-   printf("      brute\n");
-   printf("      proc\n");
-   printf("      procall\n");
-   printf("      procfs\n");
-   printf("      quick\n");
-   printf("      reverse\n");
-   printf("      sys\n");
-   printf("   Elementary tests :\n");
-   printf("      checkbrute\n");
-   printf("      checkchdir\n");
-   printf("      checkgetaffinity\n");
-   printf("      checkgetparam\n");
-   printf("      checkgetpgid\n");
-   printf("      checkgetprio\n");
-   printf("      checkRRgetinterval\n");
-   printf("      checkgetsched\n");
-   printf("      checkgetsid\n");
-   printf("      checkkill\n");
-   printf("      checknoprocps\n");
-   printf("      checkopendir\n");
-   printf("      checkproc\n");
-   printf("      checkquick\n");
-   printf("      checkreaddir\n");
-   printf("      checkreverse\n");
-   printf("      checksysinfo\n");
-   printf("      checksysinfo2\n");
-   printf("      checksysinfo3\n");
-}
-
-/*
- * Parse command line arguments (exiting if requested by any option).
- */
-void parse_args(int argc, char **argv) 
-{
-   int c = 0;
-   int index = 0;
-   
-   static struct option long_options[] =
-   {
-   /* These options set a flag. */
-      {"brute-doublecheck",  no_argument,      &brutesimplecheck,   0},
-      {"alt-sysinfo",        no_argument,      &RTsys,              1},
-      {"log",                no_argument,      &logtofile,          1},
-      /* These options don't set a flag.
-         We distinguish them by their indices. */
-      {"morecheck",          no_argument,      0,                 'm'},
-      {"verbose",            no_argument,      0,                 'v'},
-      {"help",               no_argument,      0,                 'h'},
-      {"version",            no_argument,      0,                 'V'},
-      {0, 0, 0, 0}
-   };
-
-   for(;;)  // until there's no more option
-   {
-      /* getopt_long stores the option index here. */
-      int option_index = 0;
-
-      c = getopt_long (argc, argv, "dformhvV",
-                        long_options, &option_index);
-
-      /* Detect the end of the options. */
-      if (c == -1)
-         break;
-
-      switch(c)
-      {
-      case 0 :   // flag long options
-         if (long_options[option_index].flag != 0) //if this option set a flag
-         {
-            break;  // nothing to do
-         }
-         printf ("option %s", long_options[option_index].name);
-         if (optarg) // if there's an argument
-         {
-            printf (" with arg %s", optarg);
-         }
-         printf ("\n");
-         break ;
-      case 'd' :
-         brutesimplecheck = FALSE;
-         break ;
-      case 'h' :
-         usage(argv[0]) ;
-         exit (0) ;
-         break ;
-      case 'f' :
-         logtofile = 1;
-         break;
-      case 'o' :
-         logtofile = 1 ;
-         break ;
-      case 'm' :
-         morecheck = TRUE;
-         verbose = TRUE;
-         break ;
-      case 'r' :
-         RTsys = TRUE;
-         break ;
-      case 'v' :
-         verbose++ ; ;
-         break ;
-      case 'V' :
-         exit (0) ;
-         break ;
-      case '?' :     // invalid option
-         exit (2) ;
-         break ;
-      default :      // something very nasty happened
-         exit(-1) ;
-         break ;
-      }
-     
-   }
-   
-   // generate options string for logging
-   strncpy(used_options, "Used options: ", 1000);
-   if (verbose)
-      strncat(used_options, "verbose ", 1000-1-strlen(used_options));
-   if (!brutesimplecheck)
-      strncat(used_options, "brutesimplecheck ", 1000-1-strlen(used_options));
-   if (morecheck)
-      strncat(used_options, "morecheck ", 1000-1-strlen(used_options));
-   if (RTsys)
-      strncat(used_options, "RTsys ", 1000-1-strlen(used_options));
-   if (logtofile)
-      strncat(used_options, "logtofile ", 1000-1-strlen(used_options));
-      
-   // Process list of tests to do
-   for (index = optind; index < argc; index++)
-   {
-      if ((strcmp(argv[index], "proc") == 0) ||
-               (strcmp(argv[index], "checkproc") == 0)) 
-      {
-         tab_test[TST_PROC].todo = TRUE;
-      }
-      else if (strcmp(argv[index], "procfs") == 0) 
-      {
-         tab_test[TST_CHDIR].todo = TRUE;
-         tab_test[TST_OPENDIR].todo = TRUE;
-         tab_test[TST_READDIR].todo = TRUE;
-      }
-      else if (strcmp(argv[index], "procall") == 0) 
-      {
-         tab_test[TST_PROC].todo = TRUE;
-         tab_test[TST_CHDIR].todo = TRUE;
-         tab_test[TST_OPENDIR].todo = TRUE;
-         tab_test[TST_READDIR].todo = TRUE;
-      }
-      else if (strcmp(argv[index], "sys") == 0) 
-      {
-         tab_test[TST_KILL].todo = TRUE;
-         tab_test[TST_NOPROCPS].todo = TRUE;
-         tab_test[TST_GETPRIO].todo = TRUE;
-         tab_test[TST_GETPGID].todo = TRUE;
-         tab_test[TST_GETSID].todo = TRUE;
-         tab_test[TST_GETAFF].todo = TRUE;
-         tab_test[TST_GETPARM].todo = TRUE;
-         tab_test[TST_GETSCHED].todo = TRUE;
-         tab_test[TST_RR_INT].todo = TRUE;
-/* Remove sysinfo test from sys compound test as it give FP in some case
-         if (TRUE == RTsys) 
-         {
-            tab_test[TST_SYS_INFO2].todo = TRUE;
-         }
-         else 
-         {
-            tab_test[TST_SYS_INFO].todo = TRUE;
-         }
-*/
-      }
-      else if (strcmp(argv[index], "quick") == 0) 
-      {
-         tab_test[TST_QUICKONLY].todo = TRUE;
-/* Remove sysinfo test from quick compound test as it give FP in some case
-         if (TRUE == RTsys) 
-         {
-            tab_test[TST_SYS_INFO2].todo = TRUE;
-         }
-         else 
-         {
-            tab_test[TST_SYS_INFO].todo = TRUE;
-         }
-*/
-      }
-      else if ((strcmp(argv[index], "brute") == 0) ||
-               (strcmp(argv[index], "checkbrute") == 0)) 
-      {
-         tab_test[TST_BRUTE].todo = TRUE;
-      }
-      else if ((strcmp(argv[index], "reverse") == 0) ||
-               (strcmp(argv[index], "checkreverse") == 0)) 
-      {
-         tab_test[TST_REVERSE].todo = TRUE;
-      }
-      else if (strcmp(argv[index], "opendir") == 0) 
-      {
-         tab_test[TST_OPENDIR].todo = TRUE;
-      }
-      else if (strcmp(argv[index], "checkquick") == 0) 
-      {
-         tab_test[TST_QUICKONLY].todo = TRUE;
-      }
-      else if (strcmp(argv[index], "checksysinfo") == 0) 
-      {
-         tab_test[TST_SYS_INFO].todo = TRUE;
-      }
-      else if (strcmp(argv[index], "checksysinfo2") == 0) 
-      {
-         tab_test[TST_SYS_INFO2].todo = TRUE;
-      }
-      else if (strcmp(argv[index], "checksysinfo3") == 0) 
-      {
-         tab_test[TST_SYS_INFO3].todo = TRUE;
-      }
-      else if (strcmp(argv[index], "checkchdir") == 0) 
-      {
-         tab_test[TST_CHDIR].todo = TRUE;
-      }
-      else if (strcmp(argv[index], "checkreaddir") == 0) 
-      {
-         tab_test[TST_READDIR].todo = TRUE;
-      }
-      else if (strcmp(argv[index], "checkopendir") == 0) 
-      {
-         tab_test[TST_OPENDIR].todo = TRUE;
-      }
-      else if (strcmp(argv[index], "checkkill") == 0) 
-      {
-         tab_test[TST_KILL].todo = TRUE;
-      }
-      else if (strcmp(argv[index], "checknoprocps") == 0) 
-      {
-         tab_test[TST_NOPROCPS].todo = TRUE;
-      }
-      else if (strcmp(argv[index], "checkgetprio") == 0) 
-      {
-         tab_test[TST_GETPRIO].todo = TRUE;
-      }
-      else if (strcmp(argv[index], "checkgetpgid") == 0) 
-      {
-         tab_test[TST_GETPGID].todo = TRUE;
-      }
-      else if (strcmp(argv[index], "checkgetsid") == 0) 
-      {
-         tab_test[TST_GETSID].todo = TRUE;
-      }
-      else if (strcmp(argv[index], "checkgetaffinity") == 0) 
-      {
-         tab_test[TST_GETAFF].todo = TRUE;
-      }
-      else if (strcmp(argv[index], "checkgetparam") == 0) 
-      {
-         tab_test[TST_GETPARM].todo = TRUE;
-      }
-      else if (strcmp(argv[index], "checkgetsched") == 0) 
-      {
-         tab_test[TST_GETSCHED].todo = TRUE;
-      }
-      else if (strcmp(argv[index], "checkRRgetinterval") == 0) 
-      {
-         tab_test[TST_RR_INT].todo = TRUE;
-      }
-      else 
-      { 
-         printf("Unknown argument\n") ; usage(argv[0]); exit(0);
-      }
-   }
-
-   
-}
-
-
 int main (int argc, char *argv[]) 
 {
-int i;
+	int i = 0;
+	
+	memset(&arguments, 0, sizeof(arguments));
 
-   printf(header) ;
+	printf("%s\n%s", argp_program_version, header);
+
    if(getuid() != 0){
       die(unlog, "You must be root to run %s !", argv[0]) ;
    }
 
    // Initialize the table of test to perform.
    // ---------------------------------------
-   for (i=0 ; i<MAX_TESTNUM ; i++) {
+   for (i = 0; i < MAX_TESTNUM; i++) 
+   {
       tab_test[i].todo = FALSE;
       tab_test[i].func = NULL;
    }
+
    tab_test[TST_PROC].func = checkproc;
    tab_test[TST_CHDIR].func = checkchdir;
    tab_test[TST_OPENDIR].func = checkopendir;
@@ -754,26 +625,16 @@ int i;
    tab_test[TST_SYS_INFO2].func = checksysinfo2;
    tab_test[TST_SYS_INFO3].func = checksysinfo3;
 
+   argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
    // get the number max of processes on the system.
    // ---------------------------------------------
    get_max_pid(&maxpid);
 
-   // analyze command line args
-   // -------------------------
-   if(argc < 2) 
-   {
-      usage(argv[0]);
-      exit (1);
-   }
-   used_options[0] = 0 ;
-   parse_args(argc, argv) ;
-   
    if (logtofile == 1) 
    {
       unlog = init_log(logtofile, header, "unhide-linux") ;
    }
-   msgln(unlog, 0, used_options) ;
 
    setpriority(PRIO_PROCESS,0,-20);  /* reduce risk from intermittent processes - may fail, dont care */
 
@@ -781,15 +642,18 @@ int i;
 
    // Execute required tests.
    // ----------------------
-   for (i=0 ; i<MAX_TESTNUM ; i++) {
+   for (i = 0; i < MAX_TESTNUM; i++) 
+   {
       if ((tab_test[i].todo == TRUE) && (tab_test[i].func != NULL))
       {
          tab_test[i].func();
       }
    }
 
-   if (logtofile == 1) {
+   if (logtofile == 1)
+   {
       close_log(unlog, "unhide-linux") ;
    }
+
    return found_HP;
 }
