@@ -64,13 +64,19 @@ void *funcionThread (void *parametro)
 void brute(void) 
 {
    int i=0;
-   int allpids[maxpid] ;
-   int allpids2[maxpid] ;
+   int* allpids;
+   int* allpids2;
    int x;
    int y;
    int z;
 
    msgln(unlog, 0, "[*]Starting scanning using brute force against PIDS with fork()\n") ;
+
+   allpids = malloc(sizeof(int)*maxpid) ;
+   allpids2 = malloc(sizeof(int)*maxpid) ;
+   if (!allpids || !allpids2) {
+      die(unlog, "Error: Cannot allocate pid arrays ! Exiting.");
+   }
 
    // PID under 301 are reserved for kernel
    for(x=0; x < 301; x++) 
@@ -214,4 +220,7 @@ void brute(void)
          }
       }
    }
+
+   free(allpids);
+   free(allpids2);
 }
