@@ -132,6 +132,16 @@ Examples:
 
  # ./unhide-tcp  -flov
  # ./unhide-tcp  -flovs
+ 
+ 	 
+// Anti-unhide prevention
+// -----------------------
+Some rootkits detects unhide checking its name. Just copy the original executable with a random name, example:
+
+# cp unhide $RANDOM
+# cp unhide-gids $RANDOM
+# ls
+        19251  19384  unhide  unhide-gids
 
 // License
 // -------
