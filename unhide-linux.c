@@ -66,7 +66,11 @@ enum CMD_OPT_e
 	OPT_PROCFS,
 	OPT_QUICK,
 	OPT_REVERSE,
-	OPT_SYS
+	OPT_SYS,
+	#if UNH_COMPILE_LOW == 1
+	OPT_LOW,
+	#endif
+	OPT_FINAL_END
 };
 
 typedef struct arguments
@@ -76,7 +80,7 @@ typedef struct arguments
 
 struct arguments arguments;
 
-const char* argp_program_version = "Unhide 20190702";
+const char* argp_program_version = "Unhide 20200101";
 const char* argp_program_bug_address = "http://www.unhide-forensics.info";
 
 static char doc[] =
@@ -87,7 +91,7 @@ static char args_doc[] = " ";
 
 // header
 const char header[] =
-   "Copyright © 2012-2019 Yago Jesus, Patrick Gouin & David Reguera aka Dreg\n"
+   "Copyright © 2012-2020 Yago Jesus, Patrick Gouin & David Reguera aka Dreg\n"
    "License GPLv3+ : GNU GPL version 3 or later\n"
    "http://www.unhide-forensics.info\n\n"
    "NOTE : This version of unhide is for systems using Linux >= 2.6 \n\n";
@@ -106,6 +110,9 @@ static struct argp_option options[] =
 	{ "quick", OPT_QUICK, 0, OPTION_ARG_OPTIONAL, "combines the --proc, --procfs and --sys in a quick way. It's about 20 times faster but may give more false positives", 1 },
 	{ "reverse", OPT_REVERSE, 0, OPTION_ARG_OPTIONAL, "Verify that all threads seen by ps are also seen in procfs and by system calls", 1 },
 	{ "sys", OPT_SYS, 0, OPTION_ARG_OPTIONAL, "compare information gathered from /bin/ps with information gathered from system calls", 1 },
+	#if UNH_COMPILE_LOW == 1
+	{ "low", OPT_LOW, 0, OPTION_ARG_OPTIONAL, "assembly direct calls vs API calls", 1 },
+	#endif
 	{ NULL, 0, NULL, 0, NULL, 0 }
 };
 
@@ -193,6 +200,14 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state)
 		tab_test[TST_GETSCHED].todo = TRUE;
 		tab_test[TST_RR_INT].todo = TRUE;
 		break;
+		
+	#if UNH_COMPILE_LOW == 1
+	case OPT_LOW:
+		must = TRUE_;
+		
+		tab_test[TST_LOW].todo = TRUE;
+		break;
+	#endif
 
 	case ARGP_KEY_END:
 		if (!must)
@@ -624,6 +639,9 @@ int main (int argc, char *argv[])
    tab_test[TST_SYS_INFO].func = checksysinfo;
    tab_test[TST_SYS_INFO2].func = checksysinfo2;
    tab_test[TST_SYS_INFO3].func = checksysinfo3;
+   #if UNH_COMPILE_LOW == 1
+   tab_test[TST_LOW].func = checklow;
+   #endif 
 
    argp_parse(&argp, argc, argv, 0, 0, &arguments);
 

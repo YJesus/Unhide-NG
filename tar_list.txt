@@ -21,6 +21,8 @@
 ./unhide-linux.h
 ./unhide-linux-procfs.c
 ./unhide-linux-syscall.c
+./unhide-linux-low.c
+./unhide-gids.c
 ./unhide-output.c
 ./unhide-output.h
 ./unhide-posix.c

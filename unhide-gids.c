@@ -37,7 +37,7 @@ typedef enum BOOL_e
 	TRUE_ = 1
 } BOOL_t;
 
-const char* argp_program_version = "unhide-gids 20190207";
+const char* argp_program_version = "unhide-gids 20200101";
 const char* argp_program_bug_address = "http://www.unhide-forensics.info";
 
 static char doc[] =
@@ -47,7 +47,7 @@ static char doc[] =
 static char args_doc[] = " ";
 
 const char header[] =
-"Copyright (c) 2019 Yago Jesus, Patrick Gouin & David Reguera Garcia aka Dreg\n"
+"Copyright (c) 2019-2020 Yago Jesus, Patrick Gouin & David Reguera Garcia aka Dreg\n"
 "License GPLv3+ : GNU GPL version 3 or later\n"
 "http://www.unhide-forensics.info\n\n"
 "we recommend you execute first --copy-with-random-name-to=path or --copy-with-random-name-to-tmp to avoid unhide detection\n\n";

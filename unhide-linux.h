@@ -1,3 +1,6 @@
+#ifndef _UNHIDE_LINUX_H__
+#define _UNHIDE_LINUX_H__
+
 /*
           http://www.unhide-forensics.info/
 */
@@ -17,6 +20,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+
+#include <stdio.h>
+#include <unistd.h>
+
+
+#define UNH_COMPILE_LOW 1 /* with 0 value dont compile assembly stuff */
 
 // External commands
 // =================
@@ -73,6 +82,9 @@ enum test_num {
    TST_SYS,
    TST_QUICK,
    TST_PROCALL,
+   #if UNH_COMPILE_LOW == 1
+   TST_LOW,
+   #endif
    // MAX number, should be the last of enum.
    MAX_TESTNUM
 };
@@ -157,3 +169,9 @@ extern void checksysinfo4(void) ;
 // unhide-linux-compound.c
 extern void checkallquick(void) ;
 extern void checkallreverse(void) ;
+
+#if UNH_COMPILE_LOW == 1
+extern void checklow(void) ;
+#endif 
+
+#endif /* _UNHIDE_LINUX_H__ */

@@ -1,10 +1,34 @@
+/*
+          http://www.unhide-forensics.info/
+*/
+
+/*
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#include "unhide-linux.h"
+
+#if UNH_COMPILE_LOW == 1
+
 #include <stdio.h>
-#include <dirent.h>     
+#include <dirent.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
 
 #define BUF_SIZE 0x500000
 
@@ -36,7 +60,6 @@ static inline int ExistPIDInProc(pid_t pid, int* exist)
 		while ((ent = readdir(dir)) != NULL)
 		{
 			c = ent->d_name[0];
-			
 			if (c >= '0' && c <= '9')
 			{
 				current_pid = atoi(ent->d_name);
@@ -58,6 +81,7 @@ static inline int ExistPIDInProc(pid_t pid, int* exist)
 }
 
 
+char buf[BUF_SIZE];
 
 #pragma GCC push_options
 #pragma GCC optimize("O0")
@@ -66,13 +90,11 @@ int mainw(NAME_TIMES_t** name_times, size_t* last_elemt)
 	int nread = 0;
 	struct linux_dirent* d = NULL;
 	int bpos = 0;
-	char buf[BUF_SIZE];
 	char c;
 	pid_t current_pid = 0;
 	size_t i = 0;
 	int found = 0;
 
-	memset(buf, 0, sizeof(buf));
 
 	/*
 	TO DO: iterate more times buf...
@@ -89,7 +111,7 @@ int mainw(NAME_TIMES_t** name_times, size_t* last_elemt)
 
 #ifdef __x86_64
 	__asm__("mov %0, %%rax\n\t"
-		: 
+		:
 		: "r"(buf)
 		:
 	);
@@ -115,7 +137,7 @@ int mainw(NAME_TIMES_t** name_times, size_t* last_elemt)
 		"xor %rdx, %rdx\n\t"
 		"xor %rax, %rax\n\t"
 		"mov $0x500000, %rdx\n\t"
-		
+
 		"pop %rsi\n\t"
 		"pop %rsi\n\t"
 		"pop %rsi\n\t"
@@ -184,7 +206,6 @@ int mainw(NAME_TIMES_t** name_times, size_t* last_elemt)
 			if (c >= '0' && c <= '9')
 			{
 				current_pid = atoi(d->d_name);
-				
 				found = 0;
 				for (i = 0; i < *last_elemt; i++)
 				{
@@ -201,7 +222,6 @@ int mainw(NAME_TIMES_t** name_times, size_t* last_elemt)
 					(*name_times)[*last_elemt - 1].pid = current_pid;
 					(*name_times)[*last_elemt - 1].times = 1;
 				}
-				
 			}
 		}
 		bpos += d->d_reclen;
@@ -211,7 +231,7 @@ int mainw(NAME_TIMES_t** name_times, size_t* last_elemt)
 }
 #pragma GCC pop_options
 
-int main(void)
+void checklow(void)
 {
 	NAME_TIMES_t* name_times = NULL;
 	size_t last_elemt = 0;
@@ -219,12 +239,14 @@ int main(void)
 	int j = 0;
 	int exist = 0;
 
+	msgln(unlog, 0, "[*]Searching for Hidden processes through linux readdir vs ASM getdents\n") ;
+
 	chdir("/proc");
 
 	name_times = (NAME_TIMES_t*)calloc(1, sizeof(NAME_TIMES_t));
 	if (NULL == name_times)
 	{
-		return 1;
+		return;
 	}
 
 	for (i = 0; i < 30; i++)
@@ -247,15 +269,12 @@ int main(void)
 	{
 		if (name_times[i].times != 1)
 		{
-			printf("WARNING!!! possible PID hidden in /proc/%d (times: %d)\n", name_times[i].pid, name_times[i].times);
-
+			msgln(unlog, 0, "WARNING!!! possible PID hidden in /proc/%d (times: %d)\n", name_times[i].pid, name_times[i].times);
+			printbadpid (name_times[i].pid); 
 		}
 	}
 
-	puts("bye");
-
 	free(name_times);
-
-
-	return 0;
 }
+
+#endif 
