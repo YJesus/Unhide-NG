@@ -9,7 +9,7 @@ Authors: Yago Jesus, Patrick Gouin & David Reguera Garcia aka Dreg
 // Unhide (unhide-linux or unhide-posix)
 // -------------------------------------
 
-Detecting hidden processes. Implements six main techniques
+Detecting hidden processes. Implements some techniques:
 
 1- Compare /proc vs /bin/ps output
 
@@ -97,12 +97,6 @@ changelog           -- As the name implied log of the change to unhide
 
 COPYING             -- License file, GNU GPL V3
 
-LEEME.txt           -- Spanish version of this file
-
-LISEZ-MOI.TXT       -- French version of this file
-
-NEWS                -- Release notes
-
 README.txt          -- This file
 
 sanity.sh           -- unhide-linux testsuite file
@@ -112,10 +106,6 @@ TODO                -- Evolutions to do (any volunteers ?)
 man/unhide.8        -- English man page of unhide
 
 man/unhide-tcp.8    -- English man page of unhide-tcp
-
-man/fr/unhide.8     -- French man page of unhide
-
-man/fr/unhide-tcp.8 -- French man page of unhide-tcp
 
 // Compiling
 // ---------
