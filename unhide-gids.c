@@ -49,12 +49,10 @@ static char args_doc[] = " ";
 const char header[] =
 "Copyright (c) 2019-2020 Yago Jesus, Patrick Gouin & David Reguera Garcia aka Dreg\n"
 "License GPLv3+ : GNU GPL version 3 or later\n"
-"http://www.unhide-forensics.info\n\n"
-"we recommend you execute first --copy-with-random-name-to=path or --copy-with-random-name-to-tmp to avoid unhide detection\n\n";
+"http://www.unhide-forensics.info\n\n";
 
 typedef struct arguments
 {
-	char* random_to_path;
 	BOOL_t processes_gids;
 	BOOL_t files_gids;
 	BOOL_t processes_gids_readdir;
@@ -67,8 +65,6 @@ typedef struct arguments
 enum CMD_OPT_e
 {
 	OPT_EMPTY = 1,
-	OPT_COPY_RANDOM_TO_PATH,
-	OPT_COPY_RANDOM_TO_TMP,
 	OPT_PROCESSES_GIDS_READDIR,
 	OPT_PROCESSES_GIDS_STAT,
 	OPT_PROCESSES_GIDS_JAIL,
@@ -78,8 +74,6 @@ enum CMD_OPT_e
 
 static struct argp_option options[] =
 {
-	{ "copy-with-random-name-to", OPT_COPY_RANDOM_TO_PATH, "FILE", OPTION_ARG_OPTIONAL, "Copy itself with a random name to a specific path. Example: --copy-with-random-name-to=/root" },
-	{ "copy-with-random-name-to-tmp", OPT_COPY_RANDOM_TO_TMP, 0, OPTION_ARG_OPTIONAL, "Copy itself with a random name to default tmp path" },
 	{ "processes-gids-readdir", OPT_PROCESSES_GIDS_READDIR, 0, OPTION_ARG_OPTIONAL, "bruteforce processes GIDs via readdir, very slow" },
 	{ "processes-gids-stat", OPT_PROCESSES_GIDS_STAT, 0, OPTION_ARG_OPTIONAL, "bruteforce processes GIDs via stat" },
 	{ "processes-gids-jail", OPT_PROCESSES_GIDS_JAIL, 0, OPTION_ARG_OPTIONAL, "bruteforce processes GIDs and detected setgid jail" },
@@ -87,6 +81,88 @@ static struct argp_option options[] =
 	{ "files-gids-stat", OPT_FILES_GIDS_STAT, 0, OPTION_ARG_OPTIONAL, "bruteforce files GIDs via stat" },
 	{ NULL, 0, NULL, 0, NULL, 0 }
 };
+
+typedef enum GEN_RAND_STR_e
+{
+	GRS_ALPHANUM = 0,
+	GRS_NUM,
+	GRS_ALPHA
+
+} GEN_RAND_STR_e_t;
+
+
+
+BOOL_t GenerateRandomString(char* str, GEN_RAND_STR_e_t type, int min, int max)
+{
+	char charset_alphanum[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+	char charset_num[] = "0123456789";
+	char charset_alpha[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	char* charset = NULL;
+	size_t size_charset = 0;
+	int random_nr_chars = 0;
+
+	switch (type)
+	{
+	case GRS_ALPHANUM:
+		charset = charset_alphanum;
+		size_charset = sizeof(charset_alphanum);
+		break;
+
+	case GRS_NUM:
+		charset = charset_num;
+		size_charset = sizeof(charset_num);
+		break;
+
+	case GRS_ALPHA:
+		charset = charset_alpha;
+		size_charset = sizeof(charset_alpha);
+		break;
+
+	default:
+
+		return FALSE_;
+
+		break;
+	}
+
+	srand((unsigned int)time(NULL));
+
+	random_nr_chars = rand() % max;
+	while (random_nr_chars < min)
+	{
+		random_nr_chars++;
+	}
+
+	do
+	{
+		*str = charset[rand() % (((int)size_charset) - 1)];
+		str++;
+	} while (random_nr_chars-- > 0);
+
+	return TRUE_;
+}
+
+BOOL_t GenerateRandomNamePath(char* path, char* random_path)
+{
+	char* end_str = NULL;
+
+	if ((NULL == path) || (NULL == random_path))
+	{
+		return FALSE_;
+	}
+
+	strcpy(random_path, path);
+	end_str = &random_path[strlen(random_path) - 1];
+	if ('/' != *end_str)
+	{
+		end_str++;
+		*end_str = '/';
+	}
+	end_str++;
+
+	return GenerateRandomString(end_str, GRS_ALPHANUM, 7, 9);
+}
+
 
 BOOL_t IsDirExist(char* path)
 {
@@ -237,54 +313,6 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state)
 
 	switch (key)
 	{
-
-	case OPT_COPY_RANDOM_TO_PATH:
-	case OPT_COPY_RANDOM_TO_TMP:
-		if (NULL != arguments->random_to_path)
-		{
-			fprintf(stderr, "error: you can only use --copy-with-random-name-to or --copy-with-random-name-to-tmp at the same time.\n");
-
-			argp_usage(state);
-			return ARGP_ERR_UNKNOWN;
-		}
-
-		if (OPT_COPY_RANDOM_TO_PATH == key)
-		{
-			arguments->random_to_path = calloc(1, strlen(arg) + 1);
-			if (NULL != arguments->random_to_path)
-			{
-				strcpy(arguments->random_to_path, arg);
-
-				if (FALSE_ == IsDirExist(arguments->random_to_path))
-				{
-					fprintf(stderr, "error: custom tmp dir dont exist: %s\n", arguments->random_to_path);
-					free(arguments->random_to_path);
-					arguments->random_to_path = NULL;
-				}
-			}
-		}
-		else if (OPT_COPY_RANDOM_TO_TMP == key)
-		{
-			arguments->random_to_path = calloc(1, PATH_MAX);
-			if (NULL != arguments->random_to_path)
-			{
-				if (FALSE_ == GetTempPath(arguments->random_to_path, PATH_MAX))
-				{
-					fprintf(stderr, "error: tmp dir dont exist.\n");
-					free(arguments->random_to_path);
-					arguments->random_to_path = NULL;
-				}
-			}
-		}
-
-		if (NULL == arguments->random_to_path)
-		{
-			argp_usage(state);
-			return ARGP_ERR_UNKNOWN;
-		}
-
-		break;
-
 	case OPT_PROCESSES_GIDS_READDIR:
 	case OPT_PROCESSES_GIDS_STAT:
 	case OPT_PROCESSES_GIDS_JAIL:
@@ -318,22 +346,19 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state)
 
 
 	case ARGP_KEY_END:
-		if (NULL == arguments->random_to_path)
+		if ((!arguments->processes_gids) && (!arguments->files_gids))
 		{
-			if ((!arguments->processes_gids) && (!arguments->files_gids))
-			{
-				fprintf(stderr, "error: you need specify a correct param, use --help\n");
+			fprintf(stderr, "error: you need specify a correct param, use --help\n");
 
-				argp_usage(state);
-				return ARGP_ERR_UNKNOWN;
-			}
-			else if ((arguments->processes_gids) && (arguments->files_gids))
-			{
-				fprintf(stderr, "error: you can only specify one type at the same time, user --help\n");
+			argp_usage(state);
+			return ARGP_ERR_UNKNOWN;
+		}
+		else if ((arguments->processes_gids) && (arguments->files_gids))
+		{
+			fprintf(stderr, "error: you can only specify one type at the same time, user --help\n");
 
-				argp_usage(state);
-				return ARGP_ERR_UNKNOWN;
-			}
+			argp_usage(state);
+			return ARGP_ERR_UNKNOWN;
 		}
 		break;
 
@@ -345,158 +370,6 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state)
 }
 
 static struct argp argp = { options, parse_opt, args_doc, doc, NULL, NULL, NULL };
-
-typedef enum GEN_RAND_STR_e
-{
-	GRS_ALPHANUM = 0,
-	GRS_NUM,
-	GRS_ALPHA
-
-} GEN_RAND_STR_e_t;
-
-BOOL_t GenerateRandomString(char* str, GEN_RAND_STR_e_t type, int min, int max)
-{
-	char charset_alphanum[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-	char charset_num[] = "0123456789";
-	char charset_alpha[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-	char* charset = NULL;
-	size_t size_charset = 0;
-	int random_nr_chars = 0;
-
-	switch (type)
-	{
-	case GRS_ALPHANUM:
-		charset = charset_alphanum;
-		size_charset = sizeof(charset_alphanum);
-		break;
-
-	case GRS_NUM:
-		charset = charset_num;
-		size_charset = sizeof(charset_num);
-		break;
-
-	case GRS_ALPHA:
-		charset = charset_alpha;
-		size_charset = sizeof(charset_alpha);
-		break;
-
-	default:
-
-		return FALSE_;
-
-		break;
-	}
-
-	srand((unsigned int)time(NULL));
-
-	random_nr_chars = rand() % max;
-	while (random_nr_chars < min)
-	{
-		random_nr_chars++;
-	}
-
-	do
-	{
-		*str = charset[rand() % (((int)size_charset) - 1)];
-		str++;
-	} while (random_nr_chars-- > 0);
-
-	return TRUE_;
-}
-
-
-BOOL_t GenerateRandomNamePath(char* path, char* random_path)
-{
-	char* end_str = NULL;
-
-	if ((NULL == path) || (NULL == random_path))
-	{
-		return FALSE_;
-	}
-
-	strcpy(random_path, path);
-	end_str = &random_path[strlen(random_path) - 1];
-	if ('/' != *end_str)
-	{
-		end_str++;
-		*end_str = '/';
-	}
-	end_str++;
-
-	return GenerateRandomString(end_str, GRS_ALPHANUM, 7, 9);
-}
-
-BOOL_t CopyItselfToRandomPath(char* program, char* dst_path)
-{
-	FILE* file_src = NULL;
-	FILE* file_dst = NULL;
-	char file_dst_random_name[PATH_MAX];
-	char cmd_line[PATH_MAX * 2];
-	char block[512];
-	size_t bytes_readed = 0;
-	BOOL_t retf = FALSE_;
-
-	memset(cmd_line, 0, sizeof(cmd_line));
-	memset(file_dst_random_name, 0, sizeof(file_dst_random_name));
-	memset(block, 0, sizeof(block));
-
-
-	if ((NULL == program) || (NULL == dst_path))
-	{
-		fprintf(stderr, "error: program name or dst path is NULL.\n");
-		return FALSE_;
-	}
-
-	do 
-	{
-		memset(file_dst_random_name, 0, sizeof(file_dst_random_name));
-		GenerateRandomNamePath(dst_path, file_dst_random_name);
-	} while (IsDirExist(file_dst_random_name));
-
-	printf("random name generated: %s\n", file_dst_random_name);
-
-	file_src = fopen(program, "rb");
-	if (NULL != file_src)
-	{
-		file_dst = fopen(file_dst_random_name, "wb+");
-		if (NULL != file_dst)
-		{
-			do
-			{
-				bytes_readed = fread(block, 1, sizeof(block), file_src);
-				fwrite(block, bytes_readed, 1, file_dst);
-			} while (0 != bytes_readed);
-
-			retf = TRUE_;
-
-			fclose(file_dst);
-
-			if (chmod(file_dst_random_name, S_IRWXU | S_IXGRP | S_IRGRP | S_IXOTH | S_IROTH) == 0)
-			{
-				sprintf(cmd_line, "%s t", file_dst_random_name);
-				printf("testing new executable with cmdline: %s\n", cmd_line);
-				if (system(cmd_line) == 0)
-				{
-					retf = TRUE_;
-				}
-				else
-				{
-					fprintf(stderr, "error: testing execution of the random name executable, maybe is in noexec path??\n");
-				}
-			}
-			else
-			{
-				fprintf(stderr, "error: chmod to new file fail\n");
-			}
-
-			printf("\ncopied! please run the new copy of unhide executable by hand: %s\n", file_dst_random_name);
-		}
-		fclose(file_src);
-	}
-	
-
-	return retf;
-}
 
 static int ExistStartNumericInDir(char* path, char* pid_string, int* exist)
 {
@@ -906,19 +779,10 @@ int main(int argc, char *argv[])
 	struct arguments arguments;
 	int retf = 1;
 
-	memset(&arguments, 0, sizeof(arguments));
-
-	if (argc > 1)
-	{
-		if ((argv[1][0] == 't') && (argv[1][1] == '\0'))
-		{
-			puts("executabled tested!");
-			return 0;
-		}
-	}
-
 	printf("%s\n%s", argp_program_version, header);
 
+	memset(&arguments, 0, sizeof(arguments));
+	
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
 	if (CheckRights() == -1)
@@ -926,13 +790,7 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	if (NULL != arguments.random_to_path)
-	{
-		retf = CopyItselfToRandomPath(argv[0], arguments.random_to_path) == TRUE_ ? 0 : 1;
-
-		free(arguments.random_to_path);
-	}
-	else if (arguments.files_gids)
+	if (arguments.files_gids)
 	{
 		BruteForceGIDFiles(1, MAX_VALUE(gid_t) - 1, &arguments);
 	}
@@ -942,10 +800,8 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		fprintf(stderr, "error: wtf\n");
+		fprintf(stderr, "error: bad param, use --help\n");
 	}
-
-	puts("bye");
 
 	return retf;
 }
