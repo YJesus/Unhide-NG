@@ -1,15 +1,8 @@
 ./changelog
 ./COPYING
-./LEEME.txt
-./LISEZ-MOI.TXT
 ./make_tarball.sh
-./man/es/unhide.8
-./man/es/unhide-tcp.8
-./man/fr/unhide.8
-./man/fr/unhide-tcp.8
 ./man/unhide.8
 ./man/unhide-tcp.8
-./NEWS
 ./README.txt
 ./sanity.sh
 ./sanity-tcp.sh
