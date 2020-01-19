@@ -113,7 +113,7 @@ static struct argp_option options[] =
 	{ "reverse", OPT_REVERSE, 0, OPTION_ARG_OPTIONAL, "Verify that all threads seen by ps are also seen in procfs and by system calls", 1 },
 	{ "sys", OPT_SYS, 0, OPTION_ARG_OPTIONAL, "compare information gathered from /bin/ps with information gathered from system calls", 1 },
 	#if UNH_COMPILE_LOW == 1
-	{ "low", OPT_LOW, 0, OPTION_ARG_OPTIONAL, "assembly direct calls vs API calls", 1 },
+	{ "low", OPT_LOW, 0, OPTION_ARG_OPTIONAL, "assembly direct calls vs API calls, this option only works in dynamic form, use unhide-linux-dyn", 1 },
 	#endif
 	{ NULL, 0, NULL, 0, NULL, 0 }
 };

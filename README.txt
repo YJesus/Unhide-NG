@@ -164,10 +164,12 @@ man/unhide-tcp.8    -- English man page of unhide-tcp
 
 If you ARE using a Linux kernel >= 2.6
       gcc -Wall -O2 --static -pthread unhide-linux*.c unhide-output.c -o unhide-linux
+	  gcc -Wall -O2 -pthread unhide-linux*.c unhide-output.c -o unhide-linux-dyn
       gcc unhide-gids.c unhide-output.c -o unhide-gids 
       gcc -Wall -O2 --static unhide_rb.c -o unhide_rb
       gcc -Wall -O2 --static unhide-tcp.c unhide-tcp-fast.c unhide-output.c -o unhide-tcp
       ln -s unhide unhide-linux
+	  ln -s unhide-dyn unhide-linux-dyn
 
 Else (Linux < 2.6, *BSD, Solaris and other Unice)
       gcc --static unhide-posix.c -o unhide-posix
@@ -182,6 +184,9 @@ Examples:
  # ./unhide_rb
  # ./unhide-gids --files-gids-stat --files-gids-readdir
  # ./unhide-tcp --show-fuser --show-lsof --logfile
+ # ./unhide-linux-dyn --low 
+ 
+ (--low option only works in dynamic form, use unhide-linux-dyn)
  
  	 
 // Anti-unhide prevention
