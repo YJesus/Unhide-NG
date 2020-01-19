@@ -65,7 +65,7 @@ It use two methods:
 - probe of all TCP/UDP ports not reported by netstat.
 
   -f, --show-fuser           show fuser output for hidden ports
-  -l, --logfile              log result into unhide-gids.log file
+  -l, --logfile              log result into unhide-tcp.log file
   -n, --use-netstat          use netstat instead of ss
   -o, --show-lsof            show lsof output for hidden ports
   -s, --use-quickver         use very quick version for server with lot of

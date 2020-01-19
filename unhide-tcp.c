@@ -351,7 +351,7 @@ static struct argp_option options[] =
 	{ "show-lsof", 'o', 0, OPTION_ARG_OPTIONAL, "show lsof output for hidden ports" },
 	{ "use-quickver", 's', 0, OPTION_ARG_OPTIONAL, "use very quick version for server with lot of opened ports" },
 	{ "use-netstat", 'n', 0, OPTION_ARG_OPTIONAL, "use netstat instead of ss" },
-	{ "logfile", 'l', 0, OPTION_ARG_OPTIONAL, "log result into unhide-gids.log file", 0 },
+	{ "logfile", 'l', 0, OPTION_ARG_OPTIONAL, "log result into unhide-tcp.log file", 0 },
 	{ "verbose", 'v', 0, OPTION_ARG_OPTIONAL, "verbose", 0 },
 	{ NULL, 0, NULL, 0, NULL, 0 }
 };
