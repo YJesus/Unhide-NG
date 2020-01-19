@@ -29,6 +29,50 @@ Detecting hidden processes. Implements some techniques:
   
 7- Low level stuff, ex: assembly direct calls vs API calls. ONLY for unhide-linux version
 
+      --altsysinfo           use alternate sysinfo test in meta-test
+  -l, --logfile              log result into unhide-linux.log file
+      --morecheck            more checks (available only with procfs,
+                             checkopendir & checkchdir commands
+  -v, --verbose              verbose
+      --brute                bruteforce the all process IDs
+      --brutedoublecheck     bruteforce the all process IDs with double check
+      --low                  assembly direct calls vs API calls
+      --proc                 compare /proc with the output of /bin/ps.
+      --procall              combinates --proc and --procfs
+      --procfs               compare information gathered from /bin/ps with
+                             information gathered by walking in the procfs.
+                             With --morecheck option, this test makes more
+                             checks
+      --quick                combines the --proc, --procfs and --sys in a quick
+                             way. It's about 20 times faster but may give more
+                             false positives
+      --reverse              Verify that all threads seen by ps are also seen
+                             in procfs and by system calls
+      --sys                  compare information gathered from /bin/ps with
+                             information gathered from system calls
+  -?, --help                 Give this help list
+      --usage                Give a short usage message
+  -V, --version              Print program version
+
+// Unhide-TCP
+// ----------
+
+Identify TCP/UDP ports that are listening but not listed in sbin/ss or /bin/netstat.
+It use two methods: 
+- brute force of all TCP/UDP ports availables and compare with SS/netstat output.
+- probe of all TCP/UDP ports not reported by netstat.
+
+  -f, --show-fuser           show fuser output for hidden ports
+  -l, --logfile              log result into unhide-gids.log file
+  -n, --use-netstat          use netstat instead of ss
+  -o, --show-lsof            show lsof output for hidden ports
+  -s, --use-quickver         use very quick version for server with lot of
+                             opened ports
+  -v, --verbose              verbose
+  -?, --help                 Give this help list
+      --usage                Give a short usage message
+  -V, --version              Print program version
+
 // Unhide-gids
 // -----------
 
@@ -44,18 +88,25 @@ Files: Full GIDs file occupation (files GID bruteforcing)
 
 It also can detect some rootkits safe-guards and strange things in the hooked code.
 
---files-gids-readdir   bruteforce files GIDs via readdir, very slow
+      --files-gids-readdir   bruteforce files GIDs via readdir, very slow
+      --files-gids-stat      bruteforce files GIDs via stat
+  -l, --logfile              log result into unhide-gids.log file
+      --max-gid[=COUNT]      max GID
+      --min-gid[=COUNT]      min GID
+      --processes-gids-jail  bruteforce processes GIDs and detected setgid jail
 
---files-gids-stat      bruteforce files GIDs via stat
+      --processes-gids-readdir   bruteforce processes GIDs via readdir, very
+                             slow
+      --processes-gids-stat  bruteforce processes GIDs via stat
+  -v, --verbose              verbose
+  -?, --help                 Give this help list
+      --usage                Give a short usage message
+  -V, --version              Print program version
 
---processes-gids-jail  bruteforce processes GIDs and detected setgid jail
-
---processes-gids-readdir   bruteforce processes GIDs via readdir, very slow
-
---processes-gids-stat  bruteforce processes GIDs via stat
 
 Its possible combine args of same type ex: 
 ./unhide-gids --processes-gids-jail --processes-gids-stat
+
 
 // Unhide_rb
 // ---------
@@ -71,13 +122,6 @@ As the original unhide.rb, it is roughly equivalent to "unhide-linux quick rever
 - there's no logging capability.
 It is very quick, about 80 times quicker than "unhide-linux quick reverse"
 
-// Unhide-TCP
-// ----------
-
-Identify TCP/UDP ports that are listening but not listed in sbin/ss or /bin/netstat.
-It use two methods: 
-- brute force of all TCP/UDP ports availables and compare with SS/netstat output.
-- probe of all TCP/UDP ports not reported by netstat.
 
 // Files
 // -----
@@ -134,12 +178,10 @@ Else (Linux < 2.6, *BSD, Solaris and other Unice)
 You MUST be root to use unhide-linux, unhide-gids and unhide-tcp.
 
 Examples:
- # ./unhide-linux --brute
+ # ./unhide-linux --brute --procall 
  # ./unhide_rb
- # ./unhide-gids --files-gids-stat
-
- # ./unhide-tcp  -flov
- # ./unhide-tcp  -flovs
+ # ./unhide-gids --files-gids-stat --files-gids-readdir
+ # ./unhide-tcp --show-fuser --show-lsof --logfile
  
  	 
 // Anti-unhide prevention
