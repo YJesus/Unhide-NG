@@ -822,7 +822,7 @@ int main(int argc, char *argv[])
 	
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
-         msgln(unlog, 0, "min gid: %u , max gid: %u\n", arguments.min_gid, arguments.max_gid);
+    msgln(unlog, 0, "min gid: %u , max gid: %u\n", arguments.min_gid, arguments.max_gid);
 
 	if (logtofile == 1) 
     {

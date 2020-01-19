@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <stdio.h>
+#include <argp.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -33,9 +34,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "unhide-output.h"
 #include "unhide-tcp.h"
 
+const char* argp_program_version = "unhide-tcp 20200101";
+const char* argp_program_bug_address = "http://www.unhide-forensics.info";
+
+static char doc[] =
+"unhide-tcp options:\
+\v-";
+
+static char args_doc[] = " ";
+
 // header
 const char header[] =
-       "Unhide-tcp 20200101\n"
        "Copyright © 2012-2020 Yago Jesus, Patrick Gouin & David Reguera aka Dreg\n"
        "License GPLv3+ : GNU GPL version 3 or later\n"
        "http://www.unhide-forensics.info\n"
@@ -53,9 +62,6 @@ char checker[10] = "ss" ;
 
 // Temporary string for output
 char scratch[1000];
-
-// Temporary string for output
-char used_options[1000] = "";
 
 // For logging to file
 int logtofile = 0;
@@ -339,124 +345,59 @@ static void print_hidden_UDP_ports_1_by_1(enum Proto proto)
    }
 }
 
-
-/*
- * Print usage. 
- */
-void usage(char * command) {
-
-   printf("Usage: %s [options] \n\n", command);
-   printf("Options :\n");
-   printf("   -V          Show version and exit\n");
-   printf("   -v          verbose\n");
-   printf("   -h          display this help\n");
-   printf("   -f          show fuser output for hidden ports\n");
-   printf("   -l          show lsof output for hidden ports\n");
-   printf("   -o          log result into unhide-tcp.log file\n");
-   printf("   -s          use very quick version for server with lot of opened ports\n");
-   printf("   -n          use netstat instead of ss\n");
-}
-
-/*
- * Parse command line arguments (exiting if requested by any option).
- */
-void parse_args(int argc, char **argv) 
+static struct argp_option options[] =
 {
-   int c = 0;
-   
-   static struct option long_options[] =
-   {
-   /* These options set a flag. */
-      {"verbose",  no_argument,      &verbose,   1},
-      {"brief",    no_argument,      &verbose,   0},
-      {"fuser",    no_argument,      &use_fuser, 1},
-      {"lsof",     no_argument,      &use_lsof,  1},
-      {"log",      no_argument,      &logtofile, 1},
-      {"netstat",  no_argument,      &use_ss,    0},
-      {"server",   no_argument,      &use_quick, 1},
-      /* These options don't set a flag.
-         We distinguish them by their indices. */
-      {"help",     no_argument,      0,        'h'},
-      {"version",  no_argument,      0,        'V'},
-      {0, 0, 0, 0}
-   };
+	{ "show-fuser", 'f', 0, OPTION_ARG_OPTIONAL, "show fuser output for hidden ports" },
+	{ "show-lsof", 'o', 0, OPTION_ARG_OPTIONAL, "show lsof output for hidden ports" },
+	{ "use-quickver", 's', 0, OPTION_ARG_OPTIONAL, "use very quick version for server with lot of opened ports" },
+	{ "use-netstat", 'n', 0, OPTION_ARG_OPTIONAL, "use netstat instead of ss" },
+	{ "logfile", 'l', 0, OPTION_ARG_OPTIONAL, "log result into unhide-gids.log file", 0 },
+	{ "verbose", 'v', 0, OPTION_ARG_OPTIONAL, "verbose", 0 },
+	{ NULL, 0, NULL, 0, NULL, 0 }
+};
 
-   for(;;)  // until there's no more option
-   {
-      /* getopt_long stores the option index here. */
-      int option_index = 0;
+static error_t parse_opt(int key, char* arg, struct argp_state* state)
+{
+	struct arguments* arguments = (struct arguments*) state->input;
 
-      c = getopt_long (argc, argv, "Vvhflosn",
-                        long_options, &option_index);
+	switch (key)
+	{
+	case 'v':
+		verbose = 1;
+		break;
+		
+	case 'l': 
+		logtofile = 1;
+		break;
+		
+	case 'f': 
+		use_fuser = 1 ;
+		break;
+		
+	case 'o': 
+		use_lsof = 1 ;
+		break;
+		
+	case 's': 
+		use_quick = 1 ;
+		break;
+		
+	case 'n': 
+		use_ss = 0 ;
+		break;
 
-      /* Detect the end of the options. */
-      if (c == -1)
-         break;
+	case ARGP_KEY_END:
+		break;
 
-      switch(c)
-      {
-      case 0 :   // flag long options
-         if (long_options[option_index].flag != 0) //if this option set a flag
-         {
-            break;  // nothing to do
-         }
-         printf ("option %s", long_options[option_index].name);
-         if (optarg) // if there's an argument
-         {
-            printf (" with arg %s", optarg);
-         }
-         printf ("\n");
-         break ;
-      case 'f' :
-         use_fuser = 1 ;
-         break ;
-      case 'h' :
-         usage(argv[0]) ;
-         exit (0) ;
-         break ;
-      case 'l' :
-         use_lsof = 1 ;
-         break;
-      case 'o' :
-         logtofile = 1 ;
-         break ;
-      case 's' :
-         use_quick = 1 ;
-         break ;
-      case 'n' :
-         use_ss = 0 ;
-         break ;
-      case 'v' :
-         verbose++ ; ;
-         break ;
-      case 'V' :
-         exit (0) ;
-         break ;
-      case '?' :     // invalid option
-         exit (2) ;
-         break ;
-      default :      // something very nasty happened
-         exit(-1) ;
-         break ;
-      }
-     
-   }
-   
-   // generate options string for logging
-   strncpy(used_options, "Used options: ", 1000);
-   if (verbose)
-      strncat(used_options, "verbose ", 1000-1-strlen(used_options));
-   if (use_lsof)
-      strncat(used_options, "use_lsof ", 1000-1-strlen(used_options));
-   if (use_fuser)
-      strncat(used_options, "use_fuser ", 1000-1-strlen(used_options));
-   if (!use_ss)
-      strncat(used_options, "use_netscape ", 1000-1-strlen(used_options));
-   if (use_quick)
-      strncat(used_options, "use_quick ", 1000-1-strlen(used_options));
-   if (logtofile)
-      strncat(used_options, "logtofile ", 1000-1-strlen(used_options));
+	default:
+		return ARGP_ERR_UNKNOWN;
+	}
+
+	return 0;
 }
+
+static struct argp argp = { options, parse_opt, args_doc, doc, NULL, NULL, NULL };
+
 
 /*
  * Look for TCP and UDP ports that are hidden to netstat.
@@ -469,19 +410,18 @@ int main(int argc, char  **argv)
 {
    int ret_code = 0;
 
-   printf(header) ;
+   printf("%s\n%s", argp_program_version, header);
 
    if(getuid() != 0){
       die(unlog, "You must be root to run %s !", argv[0]) ;
    }
-
-   parse_args(argc, argv) ;
+   
+   argp_parse(&argp, argc, argv, 0, 0, NULL);   
    
    if (1 == logtofile) 
    {
       unlog = init_log(logtofile, header, "unhide-tcp") ;
    }
-   msgln(unlog, 0, used_options) ;
 
    if (1 == use_ss)
    {
