@@ -117,7 +117,7 @@ man/unhide-tcp.8    -- English man page of unhide-tcp
 
 If you ARE using a Linux kernel >= 2.6
       gcc -Wall -O2 --static -pthread unhide-linux*.c unhide-output.c -o unhide-linux
-      gcc -o unhide-gids unhide-gids.c
+      gcc unhide-gids.c unhide-output.c -o unhide-gids 
       gcc -Wall -O2 --static unhide_rb.c -o unhide_rb
       gcc -Wall -O2 --static unhide-tcp.c unhide-tcp-fast.c unhide-output.c -o unhide-tcp
       ln -s unhide unhide-linux

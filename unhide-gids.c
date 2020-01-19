@@ -29,6 +29,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <fcntl.h>
 #include <dirent.h>
 
+#include "unhide-output.h"
+
 #define MAX_VALUE(a) (((unsigned long long)1 << (sizeof(a) * CHAR_BIT)) - 1)
 
 typedef enum BOOL_e
@@ -65,6 +67,11 @@ typedef struct arguments
 	BOOL_t files_gids_stat;
 } ARGUMENTS_t;
 
+BOOL_t logtofile;
+FILE *unlog;
+
+int verbose;
+	
 enum CMD_OPT_e
 {
 	OPT_EMPTY = 1,
@@ -82,6 +89,8 @@ static struct argp_option options[] =
 	{ "processes-gids-jail", OPT_PROCESSES_GIDS_JAIL, 0, OPTION_ARG_OPTIONAL, "bruteforce processes GIDs and detected setgid jail" },
 	{ "files-gids-readdir", OPT_FILES_GIDS_READDIR, 0, OPTION_ARG_OPTIONAL, "bruteforce files GIDs via readdir, very slow" },
 	{ "files-gids-stat", OPT_FILES_GIDS_STAT, 0, OPTION_ARG_OPTIONAL, "bruteforce files GIDs via stat" },
+	{ "logfile", 'l', 0, OPTION_ARG_OPTIONAL, "log result into unhide-gids.log file", 0 },
+	{ "verbose", 'v', 0, OPTION_ARG_OPTIONAL, "verbose", 0 },
 	{ NULL, 0, NULL, 0, NULL, 0 }
 };
 
@@ -283,7 +292,7 @@ int CheckRights(void)
 										{
 											if (getgid() == 1)
 											{
-												printf("user rights ok!!\n");
+												msgln(unlog, 0, "user rights ok!!\n");
 												retf = 0;
 											}
 										}
@@ -303,7 +312,7 @@ int CheckRights(void)
 
 	if (retf != 0)
 	{
-		fprintf(stderr, "error: user rights fail!!\n");
+		warnln(1, unlog, "error: user rights fail!!\n");
 	}
 
 	return retf;
@@ -316,6 +325,14 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state)
 
 	switch (key)
 	{
+	case 'v':
+		verbose = 1;
+		break;
+		
+	case 'l': 
+		logtofile = 1;
+		break;
+
 	case OPT_PROCESSES_GIDS_READDIR:
 	case OPT_PROCESSES_GIDS_STAT:
 	case OPT_PROCESSES_GIDS_JAIL:
@@ -351,14 +368,14 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state)
 	case ARGP_KEY_END:
 		if ((!arguments->processes_gids) && (!arguments->files_gids))
 		{
-			fprintf(stderr, "error: you need specify a correct param, use --help\n");
+			warnln(1, unlog, "error: you need specify a correct param, use --help\n");
 
 			argp_usage(state);
 			return ARGP_ERR_UNKNOWN;
 		}
 		else if ((arguments->processes_gids) && (arguments->files_gids))
 		{
-			fprintf(stderr, "error: you can only specify one type at the same time, user --help\n");
+			warnln(1, unlog, "error: you can only specify one type at the same time, user --help\n");
 
 			argp_usage(state);
 			return ARGP_ERR_UNKNOWN;
@@ -429,11 +446,11 @@ void _BruteForceGIDProcessesParent(pid_t child_pid, int fd_child, int fd_parent,
 	memset(pid_string, 0, sizeof(pid_string));
 	sprintf(pid_string, "%d", child_pid);
 
-	printf("starting brute... please be patient\n");
+	msgln(unlog, 0, "starting brute... please be patient\n");
 
 	if (args->processes_gids_jail)
 	{
-		puts("detecting setgid jail...");
+		msgln(unlog, 0, "detecting setgid jail...\n");
 	}
 
 	exist_in_proc = 1;
@@ -446,7 +463,7 @@ void _BruteForceGIDProcessesParent(pid_t child_pid, int fd_child, int fd_parent,
 	{
 		if ((i++ % 100000) == 0)
 		{
-			printf("actual gid: %u ....\n", actual_gid);
+			msgln(unlog, 0, "actual gid: %u ....\n", actual_gid);
 		}
 
 		glast_gid = gid_detected;
@@ -471,12 +488,12 @@ void _BruteForceGIDProcessesParent(pid_t child_pid, int fd_child, int fd_parent,
 		write_ret = write(fd_parent, &read_state, sizeof(read_state));
 		if ((read_ret == -1) || (read_ret == 0))
 		{
-			fprintf(stderr, "error: brute GID processes broken read fd_child pipe with child!! the GID range of this thread will be stopped...\n");
+			warnln(1, unlog, "error: brute GID processes broken read fd_child pipe with child!! the GID range of this thread will be stopped...\n");
 			break;
 		}
 		if ((write_ret == -1) || (write_ret == 0))
 		{
-			fprintf(stderr, "error: brute GID processes broken write fd_parent pipe with child!! the GID range of this thread will be stopped... \n");
+			warnln(1, unlog, "error: brute GID processes broken write fd_parent pipe with child!! the GID range of this thread will be stopped... \n");
 			break;
 		}
 		if (stat_ret == -1)
@@ -509,7 +526,7 @@ void _BruteForceGIDProcessesParent(pid_t child_pid, int fd_child, int fd_parent,
 		}
 		if (NULL != type)
 		{
-			printf("WARNING!!: possible rookit detected: gid_detected %u, actual_gid: %u, glast_gid: %u, statbuf.st_gid %u, type: %s\n", gid_detected, actual_gid, glast_gid, statbuf.st_gid, type);
+			msgln(unlog, 0, "WARNING!!: possible rookit detected: gid_detected %u, actual_gid: %u, glast_gid: %u, statbuf.st_gid %u, type: %s\n", gid_detected, actual_gid, glast_gid, statbuf.st_gid, type);
 			break;
 		}
 	} while (actual_gid++ != (unsigned int) last_gid);
@@ -619,7 +636,7 @@ void* BruteForceGIDProcesses(gid_t first_gid, gid_t last_gid, ARGUMENTS_t* args)
 	sprintf(fifo_parent, "%s/%s.parent_processes", tmp_dir, fifo_name);
 	sprintf(fifo_child, "%s/%s.child_processes", tmp_dir, fifo_name);
 
-	printf("brute GID processes\n\tGID range: %u - %u\n\t%s \n\t%s\n", first_gid, last_gid, fifo_parent, fifo_child);
+	msgln(unlog, 0, "brute GID processes\n\tGID range: %u - %u\n\t%s \n\t%s\n", first_gid, last_gid, fifo_parent, fifo_child);
 
 	if (mkfifo(fifo_parent, 0666) == 0)
 	{
@@ -682,13 +699,13 @@ void* BruteForceGIDFiles(gid_t first_gid, gid_t last_gid, ARGUMENTS_t* args)
 
 	sprintf(new_path, "%s/%s", tmp_dir, file_name);
 
-	printf("creating dir: %s\n", new_path);
+	msgln(unlog, 0, "creating dir: %s\n", new_path);
 
 	mkdir(new_path, 0775);
 
 	sprintf(full_path, "%s/%s", new_path, file_name_ext);
 
-	printf("brute GID files\n\tGID range: %u - %u\n\t%s\n", first_gid, last_gid, full_path);
+	msgln(unlog, 0, "brute GID files\n\tGID range: %u - %u\n\t%s\n", first_gid, last_gid, full_path);
 
 	file_fd = fopen(full_path, "wb+");
 	if (NULL == file_fd)
@@ -707,7 +724,7 @@ void* BruteForceGIDFiles(gid_t first_gid, gid_t last_gid, ARGUMENTS_t* args)
 	{
 		if ((i++ % 100000) == 0)
 		{
-			printf("actual gid: %u ....\n", actual_gid);
+			msgln(unlog, 0, "actual gid: %u ....\n", actual_gid);
 		}
 
 		chown_ret = chown(full_path, my_uid, actual_gid);
@@ -765,7 +782,7 @@ void* BruteForceGIDFiles(gid_t first_gid, gid_t last_gid, ARGUMENTS_t* args)
 
 		if (NULL != type)
 		{
-			printf("WARNING!!: possible rookit detected: type: %s - extra info : chown_ret: %d, stat_ret : %d, exist_file_ret : %d, exist_in_tmp : %d, gid_detected : %u, actual_gid : %u, last_gid : %u\n",
+			msgln(unlog, 0, "WARNING!!: possible rookit detected: type: %s - extra info : chown_ret: %d, stat_ret : %d, exist_file_ret : %d, exist_in_tmp : %d, gid_detected : %u, actual_gid : %u, last_gid : %u\n",
 				type, chown_ret, stat_ret, exist_file_ret, exist_in_tmp, gid_detected, actual_gid, glast_gid);
 			break;
 		}
@@ -788,6 +805,11 @@ int main(int argc, char *argv[])
 	
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
+	if (logtofile == 1) 
+    {
+    	unlog = init_log(logtofile, header, "unhide-gids") ;
+    }
+	
 	if (CheckRights() == -1)
 	{
 		return 0;
@@ -803,7 +825,12 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		fprintf(stderr, "error: bad param, use --help\n");
+		warnln(1, unlog, "error: bad param, use --help\n");
+	}
+	
+	if (logtofile == 1)
+	{
+		close_log(unlog, "unhide-gids") ;
 	}
 
 	return retf;
