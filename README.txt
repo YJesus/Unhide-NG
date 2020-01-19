@@ -4,6 +4,8 @@
 Unhide is a forensic tool to find hidden processes and TCP/UDP ports by rootkits / LKMs
 or by another hiding technique.
 
+Authors: Yago Jesus, Patrick Gouin & David Reguera Garcia aka Dreg
+
 // Unhide (unhide-linux or unhide-posix)
 // -------------------------------------
 
@@ -22,6 +24,30 @@ Detecting hidden processes. Implements six main techniques
 
 6- Quick compare /proc, procfs walking and syscall vs /bin/ps output. ONLY for unhide-linux version
   It's about 20 times faster than tests 1+2+3 but maybe give more false positives.
+  
+7- Low level stuff, ex: assembly direct calls vs API calls. ONLY for unhide-linux version
+
+// Unhide-gids
+// -----------
+
+A lot of rootkits uses a MAGIC GID (a random GID generated) to hide processes and files. 
+This tool find rootkits bruteforcing all GIDs possible in the system.
+
+Processes: Full GIDs process occupation (processes GID bruteforcing)
+
+Files: Full GIDs file occupation (files GID bruteforcing)
+
+It also can detect some rootkits safe-guards and strange things in the hooked code.
+
+--files-gids-readdir   bruteforce files GIDs via readdir, very slow
+
+--files-gids-stat      bruteforce files GIDs via stat
+
+--processes-gids-jail  bruteforce processes GIDs and detected setgid jail
+
+--processes-gids-readdir   bruteforce processes GIDs via readdir, very slow
+
+--processes-gids-stat  bruteforce processes GIDs via stat
 
 // Unhide_rb
 // ---------
@@ -50,6 +76,8 @@ It use two methods:
 
 unhide-linux.c      -- Hidden processes, for Linux >= 2.6
 unhide-linux.h
+
+unhide-gids.c       -- GIDs bruteforce
 
 unhide-tcp.c        -- Hidden TCP/UDP Ports
 unhide-tcp-fast.c
@@ -94,7 +122,7 @@ man/fr/unhide-tcp.8 -- French man page of unhide-tcp
 
 If you ARE using a Linux kernel >= 2.6
       gcc -Wall -O2 --static -pthread unhide-linux*.c unhide-output.c -o unhide-linux
-	  gcc -o unhide-gids unhide-gids.c
+      gcc -o unhide-gids unhide-gids.c
       gcc -Wall -O2 --static unhide_rb.c -o unhide_rb
       gcc -Wall -O2 --static unhide-tcp.c unhide-tcp-fast.c unhide-output.c -o unhide-tcp
       ln -s unhide unhide-linux
@@ -105,12 +133,12 @@ Else (Linux < 2.6, *BSD, Solaris and other Unice)
 
 // Using
 // -----
-You MUST be root to use unhide-linux and unhide-tcp.
+You MUST be root to use unhide-linux, unhide-gids and unhide-tcp.
 
 Examples:
- # ./unhide-linux  -vo quick reverse
- # ./unhide-linux  -vom procall sys
+ # ./unhide-linux --brute
  # ./unhide_rb
+ # ./unhide-gids --files-gids-stat
 
  # ./unhide-tcp  -flov
  # ./unhide-tcp  -flovs
