@@ -47,9 +47,11 @@ static char doc[] =
 static char args_doc[] = " ";
 
 const char header[] =
-"Copyright (c) 2019-2020 Yago Jesus, Patrick Gouin & David Reguera Garcia aka Dreg\n"
-"License GPLv3+ : GNU GPL version 3 or later\n"
-"http://www.unhide-forensics.info\n\n";
+       "Copyright (c) 2019-2020 Yago Jesus, Patrick Gouin & David Reguera Garcia aka Dreg\n"
+       "License GPLv3+ : GNU GPL version 3 or later\n"
+       "http://www.unhide-forensics.info\n"
+       "NOTE : some rootkits detects unhide checking its name. Just copy the original executable with a random name\n"
+       "if unhide process crash you can have a rootkit in the system with some bugs\n\n";
 
 typedef struct arguments
 {

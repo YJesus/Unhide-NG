@@ -93,8 +93,10 @@ static char args_doc[] = " ";
 const char header[] =
    "Copyright © 2012-2020 Yago Jesus, Patrick Gouin & David Reguera aka Dreg\n"
    "License GPLv3+ : GNU GPL version 3 or later\n"
-   "http://www.unhide-forensics.info\n\n"
-   "NOTE : This version of unhide is for systems using Linux >= 2.6 \n\n";
+   "http://www.unhide-forensics.info\n"
+   "NOTE : This version of unhide is for systems using Linux >= 2.6 \n"
+   "some rootkits detects unhide checking its name. Just copy the original executable with a random name\n"
+   "if unhide process crash you can have a rootkit in the system with some bugs\n\n";
 
 static struct argp_option options[] =
 {

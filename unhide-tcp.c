@@ -35,10 +35,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 // header
 const char header[] =
-       "Unhide-tcp 20121229\n"
-       "Copyright © 2012 Yago Jesus & Patrick Gouin\n"
+       "Unhide-tcp 20200101\n"
+       "Copyright © 2012-2020 Yago Jesus, Patrick Gouin & David Reguera aka Dreg\n"
        "License GPLv3+ : GNU GPL version 3 or later\n"
-       "http://www.unhide-forensics.info\n";
+       "http://www.unhide-forensics.info\n"
+       "NOTE : some rootkits detects unhide checking its name. Just copy the original executable with a random name\n"
+       "if unhide process crash you can have a rootkit in the system with some bugs\n\n";
 
 // options
 int verbose = 0;
