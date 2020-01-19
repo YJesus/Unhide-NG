@@ -54,6 +54,9 @@ It also can detect some rootkits safe-guards and strange things in the hooked co
 
 --processes-gids-stat  bruteforce processes GIDs via stat
 
+Its possible combine args of same type ex: 
+./unhide-gids --processes-gids-jail --processes-gids-stat
+
 // Unhide_rb
 // ---------
 

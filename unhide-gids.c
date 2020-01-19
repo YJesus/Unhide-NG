@@ -43,7 +43,7 @@ const char* argp_program_version = "unhide-gids 20200101";
 const char* argp_program_bug_address = "http://www.unhide-forensics.info";
 
 static char doc[] =
-"unhide-gids options:\
+"unhide-gids options, Its possible combine args of same type ex: ./unhide-gids --processes-gids-jail --processes-gids-stat\
 \v-";
 
 static char args_doc[] = " ";
