@@ -51,7 +51,8 @@ const char header[] =
        "License GPLv3+ : GNU GPL version 3 or later\n"
        "http://www.unhide-forensics.info\n"
        "NOTE : some rootkits detects unhide checking its name. Just copy the original executable with a random name\n"
-       "if unhide process crash you can have a rootkit in the system with some bugs\n\n";
+       "if unhide process crash you can have a rootkit in the system with some bugs\n"
+	   "unhide-gids can take many hours/days, but it is the only one that does not need a hidden process running to detect a rootkit.\n\n";
 
 typedef struct arguments
 {
