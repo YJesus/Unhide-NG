@@ -65,6 +65,8 @@ typedef struct arguments
 	BOOL_t processes_gids_jail;
 	BOOL_t files_gids_readdir;
 	BOOL_t files_gids_stat;
+	unsigned int min_gid;
+	unsigned int max_gid;
 } ARGUMENTS_t;
 
 BOOL_t logtofile;
@@ -79,7 +81,9 @@ enum CMD_OPT_e
 	OPT_PROCESSES_GIDS_STAT,
 	OPT_PROCESSES_GIDS_JAIL,
 	OPT_FILES_GIDS_READDIR,
-	OPT_FILES_GIDS_STAT
+	OPT_FILES_GIDS_STAT,
+	OPT_MIN_GID,
+	OPT_MAX_GID
 };
 
 static struct argp_option options[] =
@@ -88,6 +92,8 @@ static struct argp_option options[] =
 	{ "processes-gids-stat", OPT_PROCESSES_GIDS_STAT, 0, OPTION_ARG_OPTIONAL, "bruteforce processes GIDs via stat" },
 	{ "processes-gids-jail", OPT_PROCESSES_GIDS_JAIL, 0, OPTION_ARG_OPTIONAL, "bruteforce processes GIDs and detected setgid jail" },
 	{ "files-gids-readdir", OPT_FILES_GIDS_READDIR, 0, OPTION_ARG_OPTIONAL, "bruteforce files GIDs via readdir, very slow" },
+	{ "min-gid", OPT_MIN_GID, "COUNT", OPTION_ARG_OPTIONAL, "min GID"},
+	{ "max-gid", OPT_MAX_GID, "COUNT", OPTION_ARG_OPTIONAL, "max GID"},
 	{ "files-gids-stat", OPT_FILES_GIDS_STAT, 0, OPTION_ARG_OPTIONAL, "bruteforce files GIDs via stat" },
 	{ "logfile", 'l', 0, OPTION_ARG_OPTIONAL, "log result into unhide-gids.log file", 0 },
 	{ "verbose", 'v', 0, OPTION_ARG_OPTIONAL, "verbose", 0 },
@@ -331,6 +337,14 @@ static error_t parse_opt(int key, char* arg, struct argp_state* state)
 		
 	case 'l': 
 		logtofile = 1;
+		break;
+		
+	case OPT_MIN_GID:
+		arguments->min_gid = atoi(arg);
+		break;
+	
+	case OPT_MAX_GID:
+		arguments->max_gid = atoi(arg);
 		break;
 
 	case OPT_PROCESSES_GIDS_READDIR:
@@ -803,7 +817,12 @@ int main(int argc, char *argv[])
 
 	memset(&arguments, 0, sizeof(arguments));
 	
+	arguments.min_gid = 1;
+	arguments.max_gid = MAX_VALUE(gid_t) - 1;
+	
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
+
+         msgln(unlog, 0, "min gid: %u , max gid: %u\n", arguments.min_gid, arguments.max_gid);
 
 	if (logtofile == 1) 
     {
@@ -817,11 +836,11 @@ int main(int argc, char *argv[])
 
 	if (arguments.files_gids)
 	{
-		BruteForceGIDFiles(1, MAX_VALUE(gid_t) - 1, &arguments);
+		BruteForceGIDFiles(arguments.min_gid, arguments.max_gid, &arguments);
 	}
 	else if (arguments.processes_gids)
 	{
-		BruteForceGIDProcesses(1, MAX_VALUE(gid_t) - 1, &arguments);
+		BruteForceGIDProcesses(arguments.min_gid, arguments.max_gid, &arguments);
 	}
 	else
 	{
