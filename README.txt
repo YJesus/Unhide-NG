@@ -6,6 +6,8 @@ or by another hiding technique.
 
 Authors: Yago Jesus, Patrick Gouin & David Reguera Garcia aka Dreg
 
+* WARNING: if unhide process crash you can have a rootkit in the system with some bugs
+
 // Unhide (unhide-linux or unhide-posix)
 // -------------------------------------
 
@@ -32,6 +34,9 @@ Detecting hidden processes. Implements some techniques:
 
 A lot of rootkits uses a MAGIC GID (a random GID generated) to hide processes and files. 
 This tool find rootkits bruteforcing all GIDs possible in the system.
+
+unhide-gids should be your last option. it can take many hours/days. but this is the only 
+one that does not need a hidden process running to detect a rootkit.
 
 Processes: Full GIDs process occupation (processes GID bruteforcing)
 
