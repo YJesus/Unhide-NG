@@ -188,7 +188,7 @@ Examples:
  # ./unhide-tcp --show-fuser --show-lsof --logfile
  # ./unhide-linux-dyn --low 
  
- (--low option only works in dynamic form, use unhide-linux-dyn)
+ (--low option only works in dynamic form, use unhide-linux-dyn, for others options use static form)
  
  	 
 // Anti-unhide prevention
@@ -197,8 +197,9 @@ Some rootkits detects unhide checking its name. Just copy the original executabl
 
 # cp unhide $RANDOM
 # cp unhide-gids $RANDOM
+# cp unhide-linux-dyn $RANDOM
 # ls
-        19251  19384  unhide  unhide-gids
+        13313  19251  19384  unhide  unhide-gids  unhide-linux-dyn
 
 // License
 // -------
