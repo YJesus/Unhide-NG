@@ -33,6 +33,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #define MAX_VALUE(a) (((unsigned long long)1 << (sizeof(a) * CHAR_BIT)) - 1)
 
+int glretf;
+
 typedef enum BOOL_e
 {
 	FALSE_ = 0,
@@ -540,6 +542,8 @@ void _BruteForceGIDProcessesParent(pid_t child_pid, int fd_child, int fd_parent,
 		}
 		if (NULL != type)
 		{
+			glretf = 1;
+			
 			msgln(unlog, 0, "WARNING!!: possible rookit detected: gid_detected %u, actual_gid: %u, glast_gid: %u, statbuf.st_gid %u, type: %s\n", gid_detected, actual_gid, glast_gid, statbuf.st_gid, type);
 			break;
 		}
@@ -796,6 +800,8 @@ void* BruteForceGIDFiles(gid_t first_gid, gid_t last_gid, ARGUMENTS_t* args)
 
 		if (NULL != type)
 		{
+			glretf = 1;
+			
 			msgln(unlog, 0, "WARNING!!: possible rookit detected: type: %s - extra info : chown_ret: %d, stat_ret : %d, exist_file_ret : %d, exist_in_tmp : %d, gid_detected : %u, actual_gid : %u, last_gid : %u\n",
 				type, chown_ret, stat_ret, exist_file_ret, exist_in_tmp, gid_detected, actual_gid, glast_gid);
 			break;
@@ -811,8 +817,9 @@ void* BruteForceGIDFiles(gid_t first_gid, gid_t last_gid, ARGUMENTS_t* args)
 int main(int argc, char *argv[])
 {
 	struct arguments arguments;
-	int retf = 1;
 
+	glretf = 0;
+	
 	printf("%s\n%s", argp_program_version, header);
 
 	memset(&arguments, 0, sizeof(arguments));
@@ -831,7 +838,7 @@ int main(int argc, char *argv[])
 	
 	if (CheckRights() == -1)
 	{
-		return 0;
+		return glretf;
 	}
 
 	if (arguments.files_gids)
@@ -852,5 +859,5 @@ int main(int argc, char *argv[])
 		close_log(unlog, "unhide-gids") ;
 	}
 
-	return retf;
+	return glretf;
 }
