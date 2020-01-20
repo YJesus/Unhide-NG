@@ -8,6 +8,12 @@ Authors: Yago Jesus, Patrick Gouin & David Reguera Garcia aka Dreg
 
 * WARNING: if unhide process crash you can have a rootkit in the system with some bugs
 
+new official release: 
+
+**unhide_20200120**
+ 
+https://github.com/YJesus/Unhide/releases
+
 // Unhide (unhide-linux or unhide-posix)
 // -------------------------------------
 
