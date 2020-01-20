@@ -1,51 +1,45 @@
-.TH "UNHIDE-TCP" "8" "August 2012" "Administration commands"
+.TH "UNHIDE-TCP" "8" "January 2020" "Administration commands"
 .SH "NAME"
 unhide-tcp \(em forensic tool to find hidden TCP/UDP ports
 .SH "SYNOPSIS"
 .PP
-\fBunhide-tcp [options]\fR
+\fBunhide-tcp\fR [\fIOPTIONS\fR]
 .SH "DESCRIPTION"
 .PP
-\fBunhide-tcp\fR is a forensic tool that identifies TCP/UDP
-ports that are listening but are not listed by /sbin/ss (or
-alternatively by /bin/netstat) through brute forcing of all 
-TCP/UDP ports available.
-.br
-Note : If iproute2 is not available on the system, option -n or -s SHOULD be
-given on the command line.
+\fBunhide-tcp\fR is a forensic tool that identifies TCP/UDP ports that are listening but are not listed by /sbin/ss (or alternatively by /bin/netstat) through brute forcing of all TCP/UDP ports avail‐ able.
+.PP
+Note : If iproute2 is not available on the system, option -n or -s SHOULD be given on the command line
+.PP
+if unhide process crash you can have a rootkit in the system with some bugs
 .PP
 .SH "OPTIONS"
 .TP
-\fB\-h --help\fR
-Display help
+\fB-f, --show-fuser\fR 
+show fuser output for hidden ports
 .TP
-\fB\--brief\fR
-Don't display warning messages, that's the default behavior.
+\fB-l, --logfile \fR 
+log result into unhide-tcp.log file
 .TP
-\fB\-f --fuser\fR
-Display fuser output (if available) for the hidden port
+\fB-n, --use-netstat\fR 
+use netstat instead of ss
 .TP
-\fB\-l --lsof\fR
-Display lsof output (if available) for the hidden port
+\fB-o, --show-lsof\fR 
+show lsof output for hidden ports
 .TP
-\fB\-n --netstat\fR
-Use /bin/netstat instead of /sbin/ss. On system with many opened ports, this can
-slow down the test dramatically.
+\fB-s, --use-quickver\fR 
+use very quick version for server with lot of opened ports
 .TP
-\fB\-s --server\fR
-Use a very quick strategy of scanning. On system with a lot of opened ports,
-it is hundreds times faster than ss method and ten thousands times faster than
-netstat method.
+\fB-v, --verbose\fR 
+verbose
 .TP
-\fB\-o --log\fR
-Write a log file (unhide-tcp-AAAA-MM-DD.log) in the current directory.
+\fB-?, --help\fR 
+Give this help list
 .TP
-\fB\-V --version\fR
-Show version and exit
+\fB--usage\fR 
+Give a short usage message
 .TP
-\fB\-v --verbose\fR
-Be verbose, display warning message (default : don't display).
-This option may be repeated more than once.
+\fB-V, --version\fR 
+Print program version
 .PP
 .SS "Exit status:"
 .TP
@@ -61,12 +55,26 @@ if one or more hidden UDP port(s) is(are) found,
 12
 if one or more hidden TCP and UDP ports are found.
 .PP
+.SH "EXAMPLES"
+.TP
+Standard:
+unhide-tcp 
+.TP
+Other example:
+unhide-tcp --show-fuser --show-lsof --logfile
+.SH "BUGS"
+.PP
+Report \fBunhide\fR bugs on https://github.com/YJesus/Unhide
+.br
+via email dreg@fr33project.org - yjesus@security-projects.com
 .SH "SEE ALSO"
 .PP
-unhide (8).
+unhide-tcp(8), unhide-gids(8), unhide(8), unhide-posix(8)
 .SH "AUTHOR"
-.PP
-This manual page was written by Francois Marier francois@debian.org and Patrick Gouin.
+First version manual page was written by Francois Marier francois@debian.org and Patrick Gouin. 
+.br
+The current version was written by David Reguera Garcia aka Dreg.
+.br
 Permission is granted to copy, distribute and/or modify this document under
 the terms of the GNU General Public License, Version 3 or any
 later version published by the Free Software Foundation.

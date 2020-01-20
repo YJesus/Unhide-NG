@@ -1,0 +1,62 @@
+.TH "UNHIDE-POSIX" "8" "January 2020" "Administration commands"
+.SH "NAME"
+unhide-posix \(em forensic tool to find hidden processes
+.SH "SYNOPSIS"
+.PP
+\fBunhide\-posix\fR \fIproc | sys\fR
+.SH "DESCRIPTION"
+.PP
+\fBunhide\fR is a forensic tool to find processes hidden by
+rootkits, Linux kernel modules or by other techniques.  It
+detects hidden processes using six techniques.
+.PP
+.SH "OPTIONS"
+.PP
+The checks to do consist of one or more of the following tests.
+.br
+The standard tests are the aggregation of one or more elementary test(s).
+.PP
+\fBStandard tests :\fR
+.PP
+The \fIproc\fR technique consists of comparing /proc with the
+output of /bin/ps.
+.PP
+The \fIsys\fR technique consists of comparing information
+gathered from /bin/ps with information gathered from system
+calls.
+.SS "Exit status:"
+.TP
+0
+if OK,
+.TP
+1
+if a hidden or fake thread is found.
+.PP
+.SH "EXAMPLES"
+.TP
+proc test:
+unhide-posix proc
+.TP
+sys test:
+unhide-posix sys
+.SH "BUGS"
+.PP
+Report \fBunhide\fR bugs on https://github.com/YJesus/Unhide
+.br
+via email dreg@fr33project.org - yjesus@security-projects.com
+.SH "SEE ALSO"
+.PP
+unhide-tcp(8), unhide-gids(8), unhide(8), unhide-posix(8)
+.SH "AUTHOR"
+First version manual page was written by Francois Marier francois@debian.org and Patrick Gouin. 
+.br
+The current version was written by David Reguera Garcia aka Dreg.
+.br
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU General Public License, Version 3 or any
+later version published by the Free Software Foundation.
+.SH LICENSE
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
+.br
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.

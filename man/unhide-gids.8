@@ -1,0 +1,99 @@
+.TH "UNHIDE-GIDS" "8" "January 2020" "Administration commands"
+.SH "NAME"
+unhide-gids \(em forensic tool to find hidden processes
+.SH "SYNOPSIS"
+.PP
+\fBunhide-gids\fR [\fIOPTIONS\fR]
+.SH "DESCRIPTION"
+.PP
+\fBunhide-gids\fR is a forensic tool to find processes/files hidden by
+rootkits, Linux kernel modules or by other techniques.  It
+detects hidden processes/files using some techniques.
+.PP
+A lot of rootkits uses a MAGIC GID (a random GID generated) to hide processes and files. 
+This tool find rootkits bruteforcing all GIDs possible in the system.
+.PP
+unhide-gids should be your last option. it can take many hours/days. but this is the only 
+one that does not need a hidden process running to detect a rootkit.
+.PP
+if unhide process crash you can have a rootkit in the system with some bugs
+.PP
+.SH "OPTIONS"
+.TP
+\fB--files-gids-readdir\fR 
+bruteforce files GIDs via readdir, very slow
+.TP
+\fB--files-gids-stat\fR 
+bruteforce files GIDs via stat
+.TP
+\fB-l, --logfile\fR 
+log result into unhide-gids.log file
+.TP
+\fB-max-gid[=COUNT]\fR 
+max GID
+.TP
+\fB-min-gid[=COUNT]\fR 
+min GID
+.TP
+\fB--processes-gids-jail\fR 
+bruteforce processes GIDs and detected setgid jail
+.TP
+\fB--processes-gids-readdir\fR 
+bruteforce processes GIDs via readdir, very slow
+.TP
+\fB--processes-gids-stat\fR 
+bruteforce processes GIDs via stat
+.TP
+\fB-v, --verbose\fR 
+verbose
+.TP
+\fB-?, --help\fR 
+Give this help list
+.TP
+\fB--usage\fR 
+Give a short usage message
+.TP
+\fB-V, --version\fR 
+Print program version
+.PP
+.SS "Exit status:"
+.TP
+0
+if OK,
+.TP
+1
+if a hidden is found.
+.PP
+.TP
+.SH "EXAMPLES"
+.TP
+Processes:
+unhide-gids --processes-gids-jail --processes-gids-stat
+.TP
+Processes very slow:
+unhide-gids --processes-gids-readdir --processes-gids-jail --processes-gids-stat
+.TP
+Files:
+unhide-gids --files-gids-stat
+.TP
+Files very slow:
+unhide-gids --files-gids-readdir --files-gids-stat
+.SH "BUGS"
+.PP
+Report \fBunhide\fR bugs on https://github.com/YJesus/Unhide
+.br
+via email dreg@fr33project.org - yjesus@security-projects.com
+.SH "SEE ALSO"
+.PP
+unhide-tcp(8), unhide-gids(8), unhide(8), unhide-posix(8)
+.SH "AUTHOR"
+The current version was written by David Reguera Garcia aka Dreg.
+.br
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the GNU General Public License, Version 3 or any
+later version published by the Free Software Foundation.
+.SH LICENSE
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
+.br
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
