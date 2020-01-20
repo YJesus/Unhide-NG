@@ -2,6 +2,8 @@
 ./COPYING
 ./make_tarball.sh
 ./man/unhide.8
+./man/unhide-gids.8
+./man/unhide-posix.8
 ./man/unhide-tcp.8
 ./README.txt
 ./sanity.sh
