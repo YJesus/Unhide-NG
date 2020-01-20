@@ -80,7 +80,7 @@ typedef struct arguments
 
 struct arguments arguments;
 
-const char* argp_program_version = "Unhide 20200101";
+const char* argp_program_version = "Unhide 20200120";
 const char* argp_program_bug_address = "http://www.unhide-forensics.info";
 
 static char doc[] =

@@ -34,7 +34,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "unhide-output.h"
 #include "unhide-tcp.h"
 
-const char* argp_program_version = "unhide-tcp 20200101";
+const char* argp_program_version = "unhide-tcp 20200120";
 const char* argp_program_bug_address = "http://www.unhide-forensics.info";
 
 static char doc[] =

@@ -41,7 +41,7 @@ typedef enum BOOL_e
 	TRUE_ = 1
 } BOOL_t;
 
-const char* argp_program_version = "unhide-gids 20200101";
+const char* argp_program_version = "unhide-gids 20200120";
 const char* argp_program_bug_address = "http://www.unhide-forensics.info";
 
 static char doc[] =
