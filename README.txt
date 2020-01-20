@@ -10,7 +10,7 @@ Authors: Yago Jesus, Patrick Gouin & David Reguera Garcia aka Dreg
 
 new official release: 
 
-**unhide_20200120**
+unhide_20200120
  
 https://github.com/YJesus/Unhide/releases
 
