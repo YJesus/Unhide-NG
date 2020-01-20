@@ -1,3 +1,75 @@
+2020-01-20
+
+Version 20200120
+
+  added unhide-gids based in lsrootkit. This tool find rootkits bruteforcing all GIDs possible in the system.
+  by David Reguera Garcia aka Dreg https://github.com/David-Reguera-Garcia-Dreg/lsrootkit
+  
+  updated readme.txt, tar list, and new man pages
+
+  argp lib for parse params
+
+  added --low arg with unhide-dyn compile (no --static): getdents() direct syscall assembly vs readdir libc
+  
+  new params unhide-linux:
+      --altsysinfo           use alternate sysinfo test in meta-test
+  -l, --logfile              log result into unhide-linux.log file
+      --morecheck            more checks (available only with procfs,
+                             checkopendir & checkchdir commands
+  -v, --verbose              verbose
+      --brute                bruteforce the all process IDs
+      --brutedoublecheck     bruteforce the all process IDs with double check
+      --low                  assembly direct calls vs API calls, this option
+                             only works in dynamic form, use unhide-linux-dyn
+      --proc                 compare /proc with the output of /bin/ps.
+      --procall              combinates --proc and --procfs
+      --procfs               compare information gathered from /bin/ps with
+                             information gathered by walking in the procfs.
+                             With --morecheck option, this test makes more
+                             checks
+      --quick                combines the --proc, --procfs and --sys in a quick
+                             way. It's about 20 times faster but may give more
+                             false positives
+      --reverse              Verify that all threads seen by ps are also seen
+                             in procfs and by system calls
+      --sys                  compare information gathered from /bin/ps with
+                             information gathered from system calls
+  -?, --help                 Give this help list
+      --usage                Give a short usage message
+  -V, --version              Print program version
+
+  new params Unhide-TCP:
+  -f, --show-fuser           show fuser output for hidden ports
+  -l, --logfile              log result into unhide-tcp.log file
+  -n, --use-netstat          use netstat instead of ss
+  -o, --show-lsof            show lsof output for hidden ports
+  -s, --use-quickver         use very quick version for server with lot of
+                             opened ports
+  -v, --verbose              verbose
+  -?, --help                 Give this help list
+      --usage                Give a short usage message
+  -V, --version              Print program version
+
+  new params Unhide-gids:
+      --files-gids-readdir   bruteforce files GIDs via readdir, very slow
+      --files-gids-stat      bruteforce files GIDs via stat
+  -l, --logfile              log result into unhide-gids.log file
+      --max-gid[=COUNT]      max GID
+      --min-gid[=COUNT]      min GID
+      --processes-gids-jail  bruteforce processes GIDs and detected setgid jail
+
+      --processes-gids-readdir   bruteforce processes GIDs via readdir, very
+                             slow
+      --processes-gids-stat  bruteforce processes GIDs via stat
+  -v, --verbose              verbose
+  -?, --help                 Give this help list
+      --usage                Give a short usage message
+  -V, --version              Print program version
+  
+  Solved bug: https://bugs.debian.org/945864
+  Merged pull request by Joao Eriberto Mota Filho aka eribertomota: Allocate pid arrays from the stack
+  
+
 2012-12-29
   Promote unhide-tcp-double_check.c as official version of unhide-tcp. Old version 
   is still available as unhide-tcp-simple-check.c
