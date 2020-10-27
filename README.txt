@@ -1,4 +1,9 @@
-**-Unhide-**
+**-Unhide-NG**
+
+IMPORTANT NOTE : 
+Unhide-NG is not (yet) the updated version of Unhide.
+Unhide-NG is a lab project that in an indeterminate future may replace Unhide.
+
                http://www.unhide-forensics.info
 
 Unhide is a forensic tool to find hidden processes and TCP/UDP ports by rootkits / LKMs
