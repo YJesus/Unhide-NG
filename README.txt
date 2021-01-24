@@ -2,7 +2,9 @@
 
 IMPORTANT NOTE : 
 Unhide-NG is not (yet) the updated version of Unhide.
-Unhide-NG is a lab project that in an indeterminate future may replace Unhide.
+Unhide-NG is a lab project that may replace Unhide in an indeterminate future.
+For new version of unhide, check
+  https://github.com/YJesus/Unhide/releases
 
                http://www.unhide-forensics.info
 
